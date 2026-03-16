@@ -49,7 +49,7 @@ Requisitos: Docker e uma API Key da Groq/OpenAI.
 1. Clone o projeto e configure o .env:
 
 ```
-git clone https://github.com/seu-usuario/extrator-ia.git
+git clone https://github.com/Victor-Vaglieri/AI-DE-S.git
 cp .env.example .env
 ```
 
