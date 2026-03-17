@@ -10,6 +10,7 @@ class WebScraper:
         self.options.add_argument("--headless") 
         self.options.add_argument("--no-sandbox")
         self.options.add_argument("--disable-dev-shm-usage")
+        self.options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         
         self.driver = None
 
@@ -17,7 +18,7 @@ class WebScraper:
         try:
             self.driver = uc.Chrome(options=self.options)
         except Exception as e:
-            print(e)
+            print(f"Erro ao iniciar driver: {e}")
 
     def fetch_content(self, url):
         try:
@@ -25,29 +26,28 @@ class WebScraper:
                 self._start_driver()
             
             self.driver.get(url)
-
             wait = WebDriverWait(self.driver, 20)
             
-            body_element = wait.until(
-                EC.presence_of_element_located((By.TAG_NAME, "body"))
-            )
-            
-            time.sleep(2) 
+            wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+
+            for _ in range(3):
+                self.driver.execute_script("window.scrollBy(0, 800);")
+                time.sleep(2)
+
+            body_element = self.driver.find_element(By.TAG_NAME, "body")
             
             return body_element.text
         
         except Exception as e:
-            print(e)
+            print(f"Erro na extração: {e}")
             return None
         
     def close(self):
         if self.driver:
-            self.driver.quit()
-            self.driver = None
-
-if __name__ == "__main__":
-    scraper = WebScraper()
-    content = scraper.fetch_content("https://codevagas.dev/?level=junior&work_model=remote%2Chybrid%2Consite&date_filter=week")
-    if content:
-        print(f"\n{content[:500]}")
-    scraper.close()
+            try:
+                self.driver.close()
+                self.driver.quit()
+            except:
+                pass
+            finally:
+                self.driver = None

@@ -24,9 +24,8 @@ geckodriver
 data/raw/
 data/temp/
 
-# Obsidian / Saída de dados (Opcional)
-# Se você quiser que as notas extraídas NÃO subam para o Git:
-data/output/*.md
+# Output
+data/output/
 
 # Docker
 .docker/

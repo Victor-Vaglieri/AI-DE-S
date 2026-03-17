@@ -22,6 +22,8 @@ class DataProcessor:
         1. Responda APENAS com um objeto JSON válido.
         2. Se a informação não for encontrada, use null ou uma lista vazia, conforme o tipo do campo.
         3. Use o seguinte esquema JSON como guia para os campos: {json.dumps(schema_fields)}
+        4. Se você não encontrar o nome da loja no texto, use 'Desconhecida'. 
+        5. Não deixe o campo 'loja' como null.
 
         Texto Bruto:
         {raw_text[:4000]}  # Limitamos para não estourar o contexto da IA
@@ -29,7 +31,7 @@ class DataProcessor:
 
         try:
             response = self.client.chat.completions.create(
-                model="llama3-8b-8192",
+                model="llama-3.3-70b-versatile",
                 messages=[
                     {"role": "system", "content": "Você é um assistente que extrai dados e responde apenas em JSON."},
                     {"role": "user", "content": prompt}

@@ -18,10 +18,10 @@ class ObsidianExporter:
         for key, value in data_dict.items():
             lines.append(f"{key}: {value}")
         lines.append(f"extraido_em: {datetime.now().isoformat()}")
-        lines.append(mode)
-        lines.append("\n---\n")
+        lines.append(f"nicho: {mode}") 
+        lines.append("---")
         
-        lines.append(f"# {raw_name}")
+        lines.append(f"\n# {raw_name}")
         lines.append(f"\nResumo da extração automática realizada em {datetime.now().strftime('%d/%m/%Y')}.")
 
         try:
