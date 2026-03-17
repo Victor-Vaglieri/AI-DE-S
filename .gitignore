@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ambientes Virtuais (Venv)
+venv/
+env/
+.venv/
+ENV/
+
+# Configurações e Segredos (CRÍTICO)
+.env
+.env.test
+.env.local
+
+# Selenium e Drivers (Webdriver Manager cuida disso)
+.wdm/
+chromedriver.exe
+geckodriver
+
+# Logs e Dados Temporários
+*.log
+data/raw/
+data/temp/
+
+# Obsidian / Saída de dados (Opcional)
+# Se você quiser que as notas extraídas NÃO subam para o Git:
+data/output/*.md
+
+# Docker
+.docker/
+
+# IDEs (VS Code / PyCharm)
+.vscode/
+.idea/
