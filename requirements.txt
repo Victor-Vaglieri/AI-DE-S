@@ -1,11 +1,12 @@
-selenium==4.18.1
-undetected-chromedriver==3.5.5
+selenium
+undetected-chromedriver
 webdriver-manager==4.0.1
 
-groq==0.4.2
-pydantic==2.6.3
+groq==0.9.0
+httpx==0.27.2
+pydantic
 
-python-dotenv==1.0.1
+python-dotenv
 setuptools 
 
 pandas==2.2.1
