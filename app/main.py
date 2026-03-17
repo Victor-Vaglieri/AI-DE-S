@@ -1,11 +1,13 @@
 import os
 from dotenv import load_dotenv
+from app.exporter import ObsidianExporter
 from scraper import WebScraper
 from schemas.jobs import JobListing
 from schemas.hardware import HardwarePrice
 import processor
-import exporter
 
+
+exporter = ObsidianExporter()
 load_dotenv()
 
 def get_config():
