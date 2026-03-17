@@ -4,6 +4,9 @@ Data Extractor & Structurer (DE&S) é um ecossistema de extração projetado par
 ## Visão Geral
 Este projeto é um pipeline de automação inteligente desenvolvido para extrair, processar e organizar dados da web de forma autônoma. Utilizando Selenium para navegação e LLMs (IA) para processamento de linguagem natural, o sistema transforma dados da internet em bancos de dados melhor estruturados. O diferencial é sua arquitetura a qual permite trocar o nicho de extração (neste projeto é testado o nicho de "Vagas de emprego" para "preço de Hardware") sem alterar a lógica do código.
 
+<img width="1652" height="352" alt="image" src="https://github.com/user-attachments/assets/216f7194-6d9d-4505-a0cf-b10ebf62f424" />
+
+
 ### Objetivos do Projeto
 
 + Extração: Superar sites complexos que exigem interação humana via Selenium.
