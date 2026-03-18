@@ -1,15 +1,18 @@
 import os
+import shutil
 from dotenv import load_dotenv
+
+from github_project_ex import GitHubProjectExporter 
 from exporter import ObsidianExporter
 from scraper import WebScraper
-from schemas.jobs import JobList, JobListing
-from schemas.hardware import HardwarePrice, HardwareList
+from schemas.jobs import JobList
+from schemas.hardware import HardwareList
 from processor import DataProcessor
 
-exporter = ObsidianExporter()
 load_dotenv()
 
-import shutil
+obsidian_exporter = ObsidianExporter()
+github_exporter = GitHubProjectExporter()
 
 def preparar_ambiente(pasta="data/output"):
     if os.path.exists(pasta):
@@ -25,27 +28,15 @@ def preparar_ambiente(pasta="data/output"):
 
 def get_config():
     mode = os.getenv("TARGET_MODE", "jobs").lower()
-    
     configs = {
-        "jobs": {
-            "schema": JobList, 
-            "url_file": "config/sites-vagas.txt"
-        },
-        "hardware": {
-            "schema": HardwareList, 
-            "url_file": "config/sites-hardware.txt"
-        }
+        "jobs": {"schema": JobList, "url_file": "config/sites-vagas.txt"},
+        "hardware": {"schema": HardwareList, "url_file": "config/sites-hardware.txt"}
     }
-    
-    if mode not in configs:
-        raise ValueError(mode)
-        
+    if mode not in configs: raise ValueError(mode)
     return mode, configs[mode]["schema"], configs[mode]["url_file"]
 
 def load_urls(filepath):
-    if not os.path.exists(filepath):
-        print(f"Arquivo não encontrado: {filepath}")
-        return []
+    if not os.path.exists(filepath): return []
     with open(filepath, 'r', encoding='utf-8') as f:
         return [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
@@ -53,13 +44,11 @@ def main():
     preparar_ambiente()
     processor_instancia = DataProcessor()
     mode, schema, url_file = get_config()
-    
     urls = load_urls(url_file)
     
     print(f"MODO: {mode.upper()} | SCHEMA: {schema.__name__}")
 
-    if not urls:
-        return
+    if not urls: return
 
     scraper = WebScraper()
     
@@ -79,15 +68,18 @@ def main():
                         for item in items:
                             if mode == "jobs" and (not item.link_inscricao or item.link_inscricao == "None"):
                                 item.link_inscricao = url
-                            exporter.save(item, mode)
+                            
+                            obsidian_exporter.save(item, mode)
+                            if mode == "jobs":
+                                github_exporter.save(item, mode) 
                     else:
-                        exporter.save(structured_data, mode)
+                        obsidian_exporter.save(structured_data, mode)
+                        github_exporter.save(structured_data, mode)
                 else:
                     print(f"ERRO: A IA não retornou dados válidos para {url}")
             
     finally:
         scraper.close()
-        del scraper
         print("\nFim da execução.")
 
 if __name__ == "__main__":
