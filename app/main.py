@@ -77,6 +77,8 @@ def main():
                     if items and isinstance(items, list):
                         print(f"✅ Encontrados {len(items)} itens.")
                         for item in items:
+                            if mode == "jobs" and (not item.link_inscricao or item.link_inscricao == "None"):
+                                item.link_inscricao = url
                             exporter.save(item, mode)
                     else:
                         exporter.save(structured_data, mode)

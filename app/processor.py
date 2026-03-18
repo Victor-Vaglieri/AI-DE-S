@@ -26,7 +26,7 @@ class DataProcessor:
         5. Não deixe o campo 'loja' como null.
 
         Texto Bruto:
-        {raw_text[:4000]}  # Limitamos para não estourar o contexto da IA
+        {raw_text[:12000]}
         """
 
         try:
