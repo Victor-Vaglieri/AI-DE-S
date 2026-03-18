@@ -8,3 +8,5 @@ class JobListing(BaseModel):
     salario: Optional[str] = Field(description="Faixa salarial se mencionada, caso contrário 'Não informado'")
     requisitos: List[str] = Field(description="Lista de tecnologias ou habilidades exigidas")
     link_inscricao: Optional[str] = Field(description="URL para se candidatar")
+class JobList(BaseModel):
+    vagas: List[JobListing] = Field(description="Lista de todas as oportunidades de emprego encontradas na página")

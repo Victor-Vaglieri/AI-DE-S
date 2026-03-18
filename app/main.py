@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from exporter import ObsidianExporter
 from scraper import WebScraper
-from schemas.jobs import JobListing
+from schemas.jobs import JobList, JobListing
 from schemas.hardware import HardwarePrice, HardwareList
 from processor import DataProcessor
 
@@ -28,7 +28,7 @@ def get_config():
     
     configs = {
         "jobs": {
-            "schema": JobListing, 
+            "schema": JobList, 
             "url_file": "config/sites-vagas.txt"
         },
         "hardware": {
@@ -72,9 +72,11 @@ def main():
                 structured_data = processor_instancia.process(raw_text, schema)
                 
                 if structured_data:
-                    if mode == "hardware" and hasattr(structured_data, 'produtos'):
-                        print(f"✅ Encontrados {len(structured_data.produtos)} produtos.")
-                        for item in structured_data.produtos:
+                    items = getattr(structured_data, 'produtos', getattr(structured_data, 'vagas', None))
+
+                    if items and isinstance(items, list):
+                        print(f"✅ Encontrados {len(items)} itens.")
+                        for item in items:
                             exporter.save(item, mode)
                     else:
                         exporter.save(structured_data, mode)

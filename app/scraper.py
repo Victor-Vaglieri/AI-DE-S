@@ -26,7 +26,7 @@ class WebScraper:
                 self._start_driver()
             
             self.driver.get(url)
-            wait = WebDriverWait(self.driver, 20)
+            wait = WebDriverWait(self.driver, 100)
             
             wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
 
