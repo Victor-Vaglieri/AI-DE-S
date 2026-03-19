@@ -8,6 +8,7 @@ from scraper import WebScraper
 from schemas.jobs import JobList
 from schemas.hardware import HardwareList
 from processor import DataProcessor
+from urllib.parse import urlparse
 
 load_dotenv()
 
@@ -39,6 +40,14 @@ def load_urls(filepath):
     if not os.path.exists(filepath): return []
     with open(filepath, 'r', encoding='utf-8') as f:
         return [line.strip() for line in f if line.strip() and not line.startswith("#")]
+    
+def extrair_dominio(url):
+    try:
+        domain = urlparse(url).netloc
+        name = domain.replace('www.', '').split('.')[0]
+        return name.capitalize()
+    except:
+        return "Web"
 
 def main():
     preparar_ambiente()
@@ -68,7 +77,10 @@ def main():
                         for item in items:
                             if mode == "jobs" and (not item.link_inscricao or item.link_inscricao == "None"):
                                 item.link_inscricao = url
-                            
+                            invalidos = ["desconhecida", "unknown", "none", "", None]
+                            origem_atual = str(getattr(item, 'origem', "")).lower()
+                            if origem_atual in invalidos:
+                                item.origem = extrair_dominio(url)
                             obsidian_exporter.save(item, mode)
                             if mode == "jobs":
                                 github_exporter.save(item, mode) 
