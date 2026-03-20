@@ -1,26 +1,36 @@
-FROM python:3.11-slim
+FROM selenium/standalone-chrome:latest
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+USER root
+
+ENV VIRTUAL_ENV=
+ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ENV DEB_PYTHON_INSTALL_LAYOUT=deb
 
 RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    unzip \
-    curl \
-    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list' \
-    && apt-get update && apt-get install -y \
-    google-chrome-stable \
-    --no-install-recommends \
+    python3.11 \
+    python3.11-dev \
+    python3-pip \
+    python3-setuptools \
+    build-essential \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+RUN ln -sf /usr/bin/python3.11 /usr/bin/python3
+
 WORKDIR /app
 
+RUN python3 -m pip install --no-cache-dir --break-system-packages wheel
+
+RUN python3 -m pip install --no-cache-dir --break-system-packages numpy==1.26.4 pandas==2.2.1
+
+RUN python3 -m pip install --no-cache-dir --break-system-packages --no-build-isolation undetected-chromedriver==3.5.5
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN sed -i '/undetected-chromedriver/d' requirements.txt && \
+    sed -i '/pandas/d' requirements.txt && \
+    python3 -m pip install --no-cache-dir --break-system-packages -r requirements.txt
 
 COPY . .
+RUN chmod -R 777 /app
 
-CMD ["python", "app/main.py"]
+CMD ["python3", "main.py"]

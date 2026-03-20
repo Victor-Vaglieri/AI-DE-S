@@ -10,13 +10,18 @@ class WebScraper:
         self.options.add_argument("--headless") 
         self.options.add_argument("--no-sandbox")
         self.options.add_argument("--disable-dev-shm-usage")
-        self.options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        self.options.add_argument("--disable-gpu")
+        self.options.add_argument("--window-size=1920,1080")
+        self.options.binary_location = "/usr/bin/google-chrome"
         
         self.driver = None
 
     def _start_driver(self):
         try:
-            self.driver = uc.Chrome(options=self.options)
+            self.driver = uc.Chrome(
+                options=self.options,
+                driver_executable_path="/usr/bin/chromedriver",
+                version_main=120)
         except Exception as e:
             print(f"Erro ao iniciar driver: {e}")
 

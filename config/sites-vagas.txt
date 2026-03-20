@@ -1,3 +1,3 @@
-https://codevagas.dev/?level=junior&work_model=remote%2Chybrid%2Consite&date_filter=week
+https://codevagas.dev/?level=junior&work_model=remote%2Chybrid%2Consite&date_filter=today
 https://www.linkedin.com/jobs/search/?currentJobId=4384713345&distance=25&f_TPR=r86400&geoId=105871508&keywords=Desenvolvedor%20jr&origin=JOB_SEARCH_PAGE_JOB_FILTER&refresh=true
 https://br.indeed.com/jobs?q=desenvolvedor&l=S%C3%A3o+Paulo%2C+SP&fromage=3&radius=25&from=searchOnDesktopSerp&vjk=04b3d741569dbedd

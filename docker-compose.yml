@@ -1,0 +1,9 @@
+services:
+  extractor:
+    build: .
+    network_mode: "host"
+    container_name: ai-de-s-container
+    env_file: .env
+    volumes:
+      - ./data/output:/app/data/output
+    restart: "no" 
