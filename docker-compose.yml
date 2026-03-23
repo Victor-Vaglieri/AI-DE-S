@@ -3,6 +3,7 @@ services:
     build: .
     network_mode: "host"
     container_name: ai-de-s-container
+    shm_size: '2gb'
     env_file: .env
     volumes:
       - ./data/output:/app/data/output

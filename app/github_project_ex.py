@@ -69,37 +69,44 @@ class GitHubProjectExporter:
     def save(self, data, mode):
         if mode != "jobs":
             return
+        
         if not self._is_cache_loaded:
             self._load_existing_items()
-
-        target_title = f"[{data.origem}] {data.titulo} @ {data.empresa}"
-
-        if target_title in self._existing_titles_cache:
-            logging.info(f"Ignorado (já existe): {target_title}")
+        jobs_list = getattr(data, 'jobs', getattr(data, 'vagas', getattr(data, 'items', None)))
+        
+        if jobs_list is None:
+            logging.error("Não foi possível encontrar a lista de vagas no objeto JobListing.")
             return
 
-        body = (
-            f"**Local:** {data.localizacao}\n"
-            f"**Salário:** {data.salario}\n"
-            f"**Requisitos:** {', '.join(data.requisitos)}\n"
-            f"**Link:** {data.link_inscricao}"
-        )
+        for job in jobs_list:
+            target_title = f"[{job.origem}] {job.titulo} @ {job.empresa}"
+            
+            if target_title in self._existing_titles_cache:
+                logging.info(f"Ignorado (já existe): {target_title}")
+                continue
 
-        mutation = """
-        mutation($project: ID!, $title: String!, $body: String!) {
-          addProjectV2DraftIssue(input: {projectId: $project, title: $title, body: $body}) {
-            projectItem { id }
-          }
-        }
-        """
-        
-        variables = {
-            "project": self.project_id,
-            "title": target_title,
-            "body": body
-        }
+            body = (
+                f"**Local:** {job.localizacao}\n"
+                f"**Salário:** {job.salario}\n"
+                f"**Requisitos:** {', '.join(job.requisitos) if job.requisitos else 'Não informado'}\n"
+                f"**Link:** {job.link_inscricao}"
+            )
 
-        result = self._execute_graphql(mutation, variables)
-        if result:
-            logging.info(f"Sucesso: {target_title}")
-            self._existing_titles_cache.add(target_title) 
+            mutation = """
+            mutation($project: ID!, $title: String!, $body: String!) {
+              addProjectV2DraftIssue(input: {projectId: $project, title: $title, body: $body}) {
+                projectItem { id }
+              }
+            }
+            """
+            
+            variables = {
+                "project": self.project_id,
+                "title": target_title,
+                "body": body
+            }
+
+            result = self._execute_graphql(mutation, variables)
+            if result:
+                logging.info(f"Sucesso: {target_title}")
+                self._existing_titles_cache.add(target_title)
