@@ -72,15 +72,20 @@ def main():
                 if structured_data:
                     items = getattr(structured_data, 'produtos', getattr(structured_data, 'vagas', None))
 
-                    if items and isinstance(items, list):
+                    if items and len(items) > 0:
                         print(f"✅ Encontrados {len(items)} itens.")
                         for item in items:
+                            if "Título não encontrado" in item.titulo:
+                                print(f"Ignorando extração inválida para {url}")
+                                continue
+                            
                             if mode == "jobs" and (not item.link_inscricao or item.link_inscricao == "None"):
                                 item.link_inscricao = url
                             invalidos = ["desconhecida", "unknown", "none", "", None]
-                            origem_atual = str(getattr(item, 'origem', "")).lower()
-                            if origem_atual in invalidos:
+                           
+                            if str(getattr(item, 'origem', "")).lower() in invalidos:
                                 item.origem = extrair_dominio(url)
+                                
                             obsidian_exporter.save(item, mode)
                             if mode == "jobs":
                                 github_exporter.save(item, mode) 
