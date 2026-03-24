@@ -70,10 +70,9 @@ def main():
                 structured_data = processor_instancia.process(raw_text, schema)
                 
                 if structured_data:
-                    items = getattr(structured_data, 'produtos', getattr(structured_data, 'vagas', None))
+                    items = getattr(structured_data, 'vagas', [])
 
-                    if items and len(items) > 0:
-                        print(f"✅ Encontrados {len(items)} itens.")
+                    if isinstance(items, list) and len(items) > 0:
                         for item in items:
                             if "Título não encontrado" in item.titulo:
                                 print(f"Ignorando extração inválida para {url}")
