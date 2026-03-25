@@ -19,11 +19,12 @@ class DataProcessor:
         prompt = f"""
         Você é um extrator de dados especializado. Sua tarefa é extrair informações do texto bruto abaixo.
         Siga estas regras:
-        1. Responda APENAS com um objeto JSON válido.
-        2. Se a informação não for encontrada, use null ou uma lista vazia, conforme o tipo do campo.
-        3. Use o seguinte esquema JSON como guia para os campos: {json.dumps(schema_fields)}
-        4. Se você não encontrar o nome da loja no texto, use 'Desconhecida'. 
-        5. Não deixe o campo 'loja' como null.
+        1. Analise o HTML fornecido e extraia todas as listagens de vagas encontradas na lista de resultados, não apenas a vaga em destaque.
+        2. Responda APENAS com um objeto JSON válido.
+        3. Se a informação não for encontrada, use null ou uma lista vazia, conforme o tipo do campo.
+        4. Use o seguinte esquema JSON como guia para os campos: {json.dumps(schema_fields)}
+        5. Se você não encontrar o nome da loja no texto, use 'Desconhecida'. 
+        6. Não deixe o campo 'loja' como null.
 
         Texto Bruto:
         {raw_text[:12000]}
@@ -42,11 +43,8 @@ class DataProcessor:
             json_response = json.loads(response.choices[0].message.content)
             validated_data = schema(**json_response)
             
-            return validated_data
 
+            return validated_data
         except ValidationError as e:
             print(f"validação de dados: {e}")
-            return None
-        except Exception as e:
-            print(f"Erro no processamento: {e}")
             return None

@@ -5,10 +5,6 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 class GitHubProjectExporter:
-    """
-    Exportador otimizado para GitHub Projects v2.
-    Implementa cache de títulos para evitar duplicidade e excesso de chamadas de API.
-    """
     
     def __init__(self):
         self.token = os.getenv("GITHUB_TOKEN")
@@ -39,7 +35,6 @@ class GitHubProjectExporter:
             return None
 
     def _load_existing_items(self):
-        """Carrega todos os títulos do projeto para o cache em memória."""
         query = """
         query($project: ID!) {
           node(id: $project) {

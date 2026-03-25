@@ -8,7 +8,7 @@ class JobListing(BaseModel):
     origem: str = Field(default="Plataforma não identificada", description="Plataforma de origem da vaga")
     salario: Optional[str] = Field(default="Não informado", description="Faixa salarial se mencionada")
     requisitos: List[str] = Field(default_factory=list, description="Tecnologias ou habilidades")
-    link_inscricao: str = Field(default="", description="URL direta da vaga")
+    link_inscricao: Optional[str] = Field(default="", description="URL direta da vaga")
 
 class JobList(BaseModel):
     vagas: List[JobListing] = Field(default_factory=list, description="Lista de todas as oportunidades")

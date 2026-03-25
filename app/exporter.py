@@ -24,7 +24,7 @@ class ObsidianExporter:
         
         lines.append(f"\n# {raw_name}")
         
-        # Lógica para Template de Mensagem LinkedIn
+
         if mode == "jobs":
             requisitos = ", ".join(data_dict.get('requisitos', []))
             empresa = data_dict.get('empresa', 'sua empresa')

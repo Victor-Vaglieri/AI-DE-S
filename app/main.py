@@ -74,23 +74,22 @@ def main():
 
                     if isinstance(items, list) and len(items) > 0:
                         for item in items:
-                            if "Título não encontrado" in item.titulo:
-                                print(f"Ignorando extração inválida para {url}")
-                                continue
-                            
-                            if mode == "jobs" and (not item.link_inscricao or item.link_inscricao == "None"):
-                                item.link_inscricao = url
-                            invalidos = ["desconhecida", "unknown", "none", "", None]
-                           
-                            if str(getattr(item, 'origem', "")).lower() in invalidos:
-                                item.origem = extrair_dominio(url)
-                                
-                            obsidian_exporter.save(item, mode)
                             if mode == "jobs":
+                                if "Título não encontrado" in item.titulo:
+                                    print(f"Ignorando extração inválida para {url}")
+                                    continue
+                            
+                                if not item.link_inscricao:
+                                    item.link_inscricao = url
+                            
+                                if not item.link_inscricao or item.link_inscricao == "None":
+                                    item.link_inscricao = url
+                           
+                                if not item.origem or item.origem.lower() in ["desconhecida", "unknown"]:
+                                    item.origem = extrair_dominio(url)
                                 github_exporter.save(item, mode) 
-                    else:
-                        obsidian_exporter.save(structured_data, mode)
-                        github_exporter.save(structured_data, mode)
+                                
+                            obsidian_exporter.save(item, mode)                       
                 else:
                     print(f"ERRO: A IA não retornou dados válidos para {url}")
             
