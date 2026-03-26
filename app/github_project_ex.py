@@ -15,7 +15,6 @@ class GitHubProjectExporter:
         self._is_cache_loaded = False
 
     def _execute_graphql(self, query, variables=None):
-        """Método utilitário para chamadas GraphQL com tratamento de erro."""
         try:
             response = requests.post(
                 self.url, 
@@ -80,11 +79,17 @@ class GitHubProjectExporter:
             logging.info(f"Ignorado (já existe no GitHub): {target_title}")
             return
 
+        from datetime import datetime
         body = (
-            f"**Local:** {job.localizacao}\n"
-            f"**Salário:** {job.salario}\n"
-            f"**Requisitos:** {', '.join(job.requisitos) if job.requisitos else 'Não informado'}\n"
-            f"**Link:** {job.link_inscricao}"
+            f"### Detalhes da Vaga\n\n"
+            f"- **Empresa:** {job.empresa}\n"
+            f"- **Local:** {job.localizacao}\n"
+            f"- **Salário:** {job.salario}\n"
+            f"- **Link de Inscrição:** {job.link_inscricao}\n"
+            f"- **Origem:** {job.origem}\n\n"
+            f"### Requisitos & Stack\n\n"
+            + ("\n".join([f"- {req}" for req in job.requisitos]) if job.requisitos else "Não informado")
+            + f"\n\n---\n*Extraído automaticamente em {datetime.now().strftime('%d/%m/%Y %H:%M')}*"
         )
 
         variables = {

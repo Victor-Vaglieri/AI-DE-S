@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from groq import Groq
 from pydantic import ValidationError
 
@@ -11,30 +12,40 @@ class DataProcessor:
         
         self.client = Groq(api_key=self.api_key)
 
-    def process(self, raw_text, schema):
-        print(f"analisando: {schema.__name__}")
+    def _clean_html(self, html):
+        """Remoção máxima de ruído HTML para caber no limite de 12k tokens."""
+        html = re.sub(r'<(script|style|svg|noscript|header|footer|nav|iframe|button|path|form|input).*?>.*?</\1>', '', html, flags=re.DOTALL | re.IGNORECASE)
+        html = re.sub(r'<!--.*?-->', '', html, flags=re.DOTALL)
+        html = re.sub(r'(\s)([a-zA-Z0-9_-]+="[^"]*")', r'\1', html)
+        html = re.sub(r'\s+', ' ', html).strip()
+        return html
 
+    def process(self, raw_html, schema):
+        print(f"  [INFO] Analisando com {schema.__name__}")
+
+        clean_text = self._clean_html(raw_html)
         schema_fields = schema.model_json_schema()
         
-        prompt = f"""
-        Você é um extrator de dados especializado. Sua tarefa é extrair informações do texto bruto abaixo.
-        Siga estas regras:
-        1. Analise o HTML fornecido e extraia todas as listagens de vagas encontradas na lista de resultados, não apenas a vaga em destaque.
-        2. Responda APENAS com um objeto JSON válido.
-        3. Se a informação não for encontrada, use null ou uma lista vazia, conforme o tipo do campo.
-        4. Use o seguinte esquema JSON como guia para os campos: {json.dumps(schema_fields)}
-        5. Se você não encontrar o nome da loja no texto, use 'Desconhecida'. 
-        6. Não deixe o campo 'loja' como null.
+        input_text = clean_text[:18000]
 
-        Texto Bruto:
-        {raw_text[:12000]}
+        prompt = f"""
+        Extraia as vagas do HTML abaixo seguindo este JSON: {json.dumps(schema_fields)}
+        
+        REGRAS:
+        - Liste TODAS as vagas.
+        - Identifique titulo, empresa, localizacao, salario, requisitos (DETALHADOS) e link_inscricao.
+        - Empresa: use 'Desconhecida' se não achar.
+        - Requisitos: extraia todas as tecnologias e soft/hard skills listadas.
+        
+        HTML:
+        {input_text}
         """
 
         try:
             response = self.client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[
-                    {"role": "system", "content": "Você é um assistente que extrai dados e responde apenas em JSON."},
+                    {"role": "system", "content": "Assistente de extração JSON. Responda apenas o objeto JSON."},
                     {"role": "user", "content": prompt}
                 ],
                 response_format={"type": "json_object"},
@@ -43,8 +54,10 @@ class DataProcessor:
             json_response = json.loads(response.choices[0].message.content)
             validated_data = schema(**json_response)
             
-
             return validated_data
         except ValidationError as e:
-            print(f"validação de dados: {e}")
+            print(f"  [ERROR] Validação de dados: {e}")
+            return None
+        except Exception as e:
+            print(f"  [ERROR] Erro no processamento da IA: {e}")
             return None

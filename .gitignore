@@ -19,6 +19,7 @@ ENV/
 chromedriver.exe
 geckodriver
 
+
 # Logs e Dados Temporários
 *.log
 data/raw/
@@ -33,3 +34,8 @@ data/output/
 # IDEs (VS Code / PyCharm)
 .vscode/
 .idea/
+
+# IAs
+
+GEMINI.md
+CLAUDE.md
