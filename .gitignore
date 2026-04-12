@@ -24,6 +24,7 @@ geckodriver
 *.log
 data/raw/
 data/temp/
+data/github_history.log
 
 # Output
 data/output/
