@@ -9,6 +9,7 @@ class GitHubProjectExporter:
     def __init__(self):
         self.token = os.getenv("GITHUB_TOKEN")
         self.project_id = os.getenv("PROJECT_ID")
+        self.repository_id = os.getenv("REPOSITORY_ID")
         self.url = "https://api.github.com/graphql"
         self.headers = {"Authorization": f"Bearer {self.token}"}
         self._existing_titles_cache = set()
@@ -60,6 +61,20 @@ class GitHubProjectExporter:
             self._is_cache_loaded = True
             logging.info(f"Cache carregado: {len(self._existing_titles_cache)} itens encontrados.")
 
+    def _mirror_locally(self, title, body):
+        from datetime import datetime
+        log_path = "data/github_history.log"
+        os.makedirs("data", exist_ok=True)
+        try:
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(f"\n{'='*60}\n")
+                f.write(f"DATA: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n")
+                f.write(f"TITULO: {title}\n")
+                f.write(f"CONTEUDO:\n{body}\n")
+                f.write(f"{'='*60}\n")
+        except Exception as e:
+            logging.error(f"Erro ao salvar espelho local: {e}")
+
     def save(self, data, mode):
         if mode != "jobs":
             return
@@ -92,21 +107,45 @@ class GitHubProjectExporter:
             + f"\n\n---\n*Extraído automaticamente em {datetime.now().strftime('%d/%m/%Y %H:%M')}*"
         )
 
-        variables = {
-            "project": self.project_id,
-            "title": target_title,
-            "body": body
-        }
+        # Se não houver REPOSITORY_ID, caímos de volta para DraftIssue ou erro
+        if not self.repository_id:
+            logging.warning("REPOSITORY_ID não configurado. Criando como rascunho (Draft)...")
+            mutation = """
+            mutation($project: ID!, $title: String!, $body: String!) {
+              addProjectV2DraftIssue(input: {projectId: $project, title: $title, body: $body}) {
+                projectItem { id }
+              }
+            }
+            """
+            result = self._execute_graphql(mutation, {"project": self.project_id, "title": target_title, "body": body})
+        else:
+            # 1. Criar a Issue real no repositório
+            create_issue_mutation = """
+            mutation($repoId: ID!, $title: String!, $body: String!) {
+              createIssue(input: {repositoryId: $repoId, title: $title, body: $body}) {
+                issue { id }
+              }
+            }
+            """
+            issue_data = self._execute_graphql(create_issue_mutation, {"repoId": self.repository_id, "title": target_title, "body": body})
+            
+            if issue_data and "createIssue" in issue_data:
+                issue_id = issue_data["createIssue"]["issue"]["id"]
+                
+                # 2. Adicionar a Issue ao ProjectV2
+                add_to_project_mutation = """
+                mutation($project: ID!, $contentId: ID!) {
+                  addProjectV2ItemById(input: {projectId: $project, contentId: $contentId}) {
+                    item { id }
+                  }
+                }
+                """
+                result = self._execute_graphql(add_to_project_mutation, {"project": self.project_id, "contentId": issue_id})
+            else:
+                logging.error(f"Falha ao criar Issue real para: {target_title}")
+                result = None
 
-        mutation = """
-        mutation($project: ID!, $title: String!, $body: String!) {
-          addProjectV2DraftIssue(input: {projectId: $project, title: $title, body: $body}) {
-            projectItem { id }
-          }
-        }
-        """
-
-        result = self._execute_graphql(mutation, variables)
         if result:
             logging.info(f"Sucesso: {target_title}")
             self._existing_titles_cache.add(target_title)
+            self._mirror_locally(target_title, body)
