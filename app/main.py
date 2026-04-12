@@ -85,6 +85,10 @@ def main():
                             if mode == "jobs":
                                 if "Título não encontrado" in item.titulo or "Nenhuma vaga" in item.titulo:
                                     continue
+                                
+                                if "Empresa não informada" in item.empresa or not item.empresa.strip():
+                                    print(f"  [SKIP] Vaga ignorada por falta de nome da empresa: {item.titulo}")
+                                    continue
                             
                                 if not item.link_inscricao or "http" not in item.link_inscricao:
                                     parsed_uri = urlparse(url)
