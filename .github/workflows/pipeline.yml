@@ -23,7 +23,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip' # Adiciona cache para acelerar o pipeline
+          cache: 'pip'
 
       - name: Install Chrome
         run: |
@@ -39,7 +39,7 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           TARGET_MODE: ${{ vars.TARGET_MODE }}
           URLS_FILE_PATH: "config/sites_vagas.txt"
-        run: python app/main.py
+        run: python -m app.main
 
       - name: Commit and Push Results
         run: |
