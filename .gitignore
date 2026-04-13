@@ -25,9 +25,11 @@ geckodriver
 data/raw/
 data/temp/
 data/github_history.log
+data/ai_des.db
 
 # Output
 data/output/
+
 
 # Docker
 .docker/
@@ -40,3 +42,4 @@ data/output/
 
 GEMINI.md
 CLAUDE.md
+DOCUMENTACAO.md
