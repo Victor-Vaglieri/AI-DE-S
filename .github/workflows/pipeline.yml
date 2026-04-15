@@ -34,6 +34,12 @@ jobs:
         run: |
           pip install -r requirements.txt
 
+      - name: Run Tests
+        env:
+          GROQ_API_KEY: "dummy_key_for_testing"
+        run: |
+          python -m pytest tests/
+
       - name: Run Scraper Pipeline
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
