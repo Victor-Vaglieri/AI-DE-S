@@ -4,62 +4,69 @@ import re
 import logging
 from groq import Groq
 from pydantic import ValidationError
+from bs4 import BeautifulSoup
+from app.settings import settings
 
 logger = logging.getLogger("AI-DE-S.Processor")
 
 class DataProcessor:
     def __init__(self):
+        # Input/Global (English)
         self.api_key = os.getenv("GROQ_API_KEY")
         if not self.api_key:
-            logger.critical("Chave GROQ nao encontrada.")
-            raise ValueError("chave nao encontrada")
+            logger.critical("Chave GROQ não encontrada nas variáveis de ambiente.")
+            raise ValueError("chave api ausente")
         
         self.client = Groq(api_key=self.api_key)
 
-    def _clean_html(self, html):
-        html = re.sub(r'<(script|style|svg|noscript|header|footer|nav|iframe|button|path|form|input|label|meta|link).*?>.*?</\1>', '', html, flags=re.DOTALL | re.IGNORECASE)
-        html = re.sub(r'<!--.*?-->', '', html, flags=re.DOTALL)
+    def _clean_html_soup(self, html):
+        sopa = BeautifulSoup(html, 'lxml')
         
-        def clean_attrs(match):
-            tag_content = match.group(0)
-            preserved = re.findall(r'\s(href|src|data-[a-z0-9-]+)="[^"]*"', tag_content, re.IGNORECASE)
-            tag_name = re.search(r'<([a-z0-9]+)', tag_content, re.IGNORECASE).group(1)
-            attrs_str = " ".join([f'{k}="..."' for k in preserved])
-            return f'<{tag_name} {attrs_str}>'
+        # Remover lixo
+        for tg in sopa(["script", "style", "svg", "noscript", "header", "footer", "nav", "iframe", "button"]):
+            tg.decompose()
 
-        html = re.sub(r'<[a-z0-9]+[^>]*>', clean_attrs, html, flags=re.IGNORECASE)
-        html = re.sub(r'\s+', ' ', html).strip()
-        return html
+        # Limpeza de atributos
+        for tg in sopa.find_all(True):
+            atrs_perm = ['href', 'src', 'class', 'id']
+            atrs_atuais = dict(tg.attrs)
+            for at in atrs_atuais:
+                if at not in atrs_perm:
+                    del tg[at]
+
+        txt_limpo = sopa.get_text(separator=' ', strip=True)
+        lim_carac = settings.get("processor.max_html_chars", 18000)
+        return txt_limpo[:lim_carac]
 
     def process(self, raw_html, schema):
-        logger.info(f"Analisando com {schema.__name__}")
+        logger.info(f"Iniciando análise com schema: {schema.__name__}")
 
-        clean_text = self._clean_html(raw_html)
-        schema_json = schema.model_json_schema()
-        input_text = clean_text[:20000]
+        txt_proc = self._clean_html_soup(raw_html)
+        esquema_json = schema.model_json_schema()
 
-        prompt = f"""
-        Extraia as informações do HTML seguindo este schema:
-        {json.dumps(schema_json, indent=2)}
-        Responda APENAS o JSON.
-        HTML: {input_text}
+        prpt = f"""
+        Extraia as informações deste texto de página web seguindo o schema JSON:
+        {json.dumps(esquema_json, indent=2)}
+        Responda APENAS o JSON válido.
+        TEXTO: {txt_proc}
         """
 
         try:
-            response = self.client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+            resp_ia = self.client.chat.completions.create(
+                model=settings.get("llm.model", "llama-3.3-70b-versatile"),
                 messages=[
-                    {"role": "system", "content": "Assistente de extracao JSON."},
-                    {"role": "user", "content": prompt}
+                    {"role": "system", "content": "Você é um extrator de dados estruturados especialista em JSON."},
+                    {"role": "user", "content": prpt}
                 ],
                 response_format={"type": "json_object"},
-                temperature=0.1
+                temperature=settings.get("llm.temperature", 0.1),
+                max_tokens=settings.get("llm.max_tokens", 4096)
             )
-            json_response = json.loads(response.choices[0].message.content)
-            return schema(**json_response)
+            json_resp = json.loads(resp_ia.choices[0].message.content)
+            return schema(**json_resp)
         except ValidationError as e:
-            logger.error(f"Erro de validacao: {e}")
+            logger.error(f"Dados retornados pela IA não batem com o Schema: {e}")
             return None
         except Exception as e:
-            logger.error(f"Erro na IA: {e}")
+            logger.error(f"Erro na comunicação ou processamento da IA: {e}")
             return None
