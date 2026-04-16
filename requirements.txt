@@ -10,6 +10,8 @@ python-dotenv
 setuptools 
 
 pandas==2.2.1
-
+pyyaml
+beautifulsoup4
+lxml
 pytest
 pytest-mock

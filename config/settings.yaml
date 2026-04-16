@@ -1,0 +1,22 @@
+llm:
+  model: "llama-3.3-70b-versatile"
+  temperature: 0.1
+  max_tokens: 4096
+
+scraper:
+  headless: true
+  wait_time_min: 5
+  wait_time_max: 8
+  scroll_depth: 6
+  max_retries: 3
+  retry_delay: 5
+  smart_wait_element: "body"
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+
+processor:
+  max_html_chars: 18000
+  target_tags: ["article", "div[class*='job']", "div[class*='product']", "table"]
+
+pipeline:
+  output_path: "data/output"
+  db_url: "sqlite:///data/ai_des.db"
