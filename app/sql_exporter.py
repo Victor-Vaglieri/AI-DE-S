@@ -8,23 +8,25 @@ logger = logging.getLogger("AI-DE-S.SQL")
 
 class SqlExporter(BaseExporter):
     def __init__(self, db_url="sqlite:///data/ai_des.db"):
-        self.engine = create_engine(db_url)
-        Base.metadata.create_all(self.engine)
-        self.Session = sessionmaker(bind=self.engine)
+        self.db_url = db_url
+    
+        motor_banco = create_engine(self.db_url)
+        Base.metadata.create_all(motor_banco)
+        self.Sessao = sessionmaker(bind=motor_banco)
 
     def save(self, data, mode):
-        session = self.Session()
+        sessao_atual = self.Sessao()
         try:
             if mode == "jobs":
-                job_data = data.model_dump()
-                job_data['requisitos'] = ", ".join(job_data.get('requisitos', []))
-                session.add(JobModel(**job_data))
+                dados_vaga = data.model_dump()
+                dados_vaga['requisitos'] = ", ".join(dados_vaga.get('requisitos', []))
+                sessao_atual.add(JobModel(**dados_vaga))
             elif mode == "hardware":
-                session.add(HardwareModel(**data.model_dump()))
-            session.commit()
-            logger.info(f"DB Salvo: {mode}")
+                sessao_atual.add(HardwareModel(**data.model_dump()))
+            sessao_atual.commit()
+            logger.debug(f"SQL: Item salvo no banco ({mode})")
         except Exception as e:
-            session.rollback()
-            logger.error(f"Erro DB: {e}")
+            sessao_atual.rollback()
+            logger.error(f"Erro SQL: {e}")
         finally:
-            session.close()
+            sessao_atual.close()

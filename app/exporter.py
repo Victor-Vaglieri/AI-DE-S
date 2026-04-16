@@ -11,26 +11,26 @@ class ObsidianExporter(BaseExporter):
         os.makedirs(self.base_path, exist_ok=True)
 
     def save(self, structured_data, mode):
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        raw_name = getattr(structured_data, 'titulo' if mode == "jobs" else 'produto', 'item')
-        empresa = getattr(structured_data, 'empresa', 'empresa')
+        marca_tempo = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        nome_bruto = getattr(structured_data, 'titulo' if mode == "jobs" else 'produto', 'item')
+        empresa_item = getattr(structured_data, 'empresa', 'empresa')
         
-        clean_name = "".join([c for c in raw_name if c.isalnum() or c in (' ', '_')]).strip().replace(" ", "_")
-        filename = f"{mode}_{clean_name}_{timestamp}.md"
-        file_path = os.path.join(self.base_path, filename)
+        nome_limpo = "".join([c for c in nome_bruto if c.isalnum() or c in (' ', '_')]).strip().replace(" ", "_")
+        nome_arquiv = f"{mode}_{nome_limpo}_{marca_tempo}.md"
+        caminh_arquiv = os.path.join(self.base_path, nome_arquiv)
         
-        data_dict = structured_data.model_dump()
-        lines = ["---"]
-        for k, v in data_dict.items():
-            if k != 'requisitos': lines.append(f"{k}: {v}")
-        lines.append(f"extraido_em: {datetime.now().isoformat()}\nnicho: {mode}\n---\n")
-        lines.append(f"# {raw_name} @ {empresa if mode == 'jobs' else ''}")
+        dicion_dados = structured_data.model_dump()
+        linhas_texto = ["---"]
+        for chave_atua, valor_atua in dicion_dados.items():
+            if chave_atua != 'requisitos': linhas_texto.append(f"{chave_atua}: {valor_atua}")
+        linhas_texto.append(f"extraido_em: {datetime.now().isoformat()}\nnicho: {mode}\n---\n")
+        linhas_texto.append(f"# {nome_bruto} @ {empresa_item if mode == 'jobs' else ''}")
 
         try:
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write("\n".join(lines))
-            logger.info("Arquivo Obsidian salvo.")
+            with open(caminh_arquiv, "w", encoding="utf-8") as f:
+                f.write("\n".join(linhas_texto))
+            logger.debug(f"Obsidian: Salvo em {nome_arquiv}")
         except Exception as e:
             logger.error(f"Erro Obsidian: {e}")
             
-        return file_path
+        return caminh_arquiv
