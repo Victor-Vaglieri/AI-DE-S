@@ -14,17 +14,17 @@ class WebScraper:
         self.driver = None
     
     def _get_options(self):
-        opcs = uc.ChromeOptions()
+        opcoes_chrome = uc.ChromeOptions()
         if settings.get("scraper.headless", True):
-            opcs.add_argument("--headless=new") 
-        opcs.add_argument("--no-sandbox")
-        opcs.add_argument("--disable-dev-shm-usage")
-        opcs.add_argument("--disable-gpu")
-        opcs.add_argument("--window-size=1920,1080")
+            opcoes_chrome.add_argument("--headless=new") 
+        opcoes_chrome.add_argument("--no-sandbox")
+        opcoes_chrome.add_argument("--disable-dev-shm-usage")
+        opcoes_chrome.add_argument("--disable-gpu")
+        opcoes_chrome.add_argument("--window-size=1920,1080")
         
-        user_agent = settings.get('scraper.user_agent')
-        opcs.add_argument(f"user-agent={user_agent}")
-        return opcs
+        user_agent_str = settings.get('scraper.user_agent')
+        opcoes_chrome.add_argument(f"user-agent={user_agent_str}")
+        return opcoes_chrome
 
     def _start_driver(self):
         try:
@@ -38,38 +38,38 @@ class WebScraper:
             self.driver = None
 
     def _human_scroll(self):
-        alt_at = self.driver.execute_script("return document.body.scrollHeight")
-        prof_scroll = settings.get("scraper.scroll_depth", 6)
+        altura_atua = self.driver.execute_script("return document.body.scrollHeight")
+        profun_scroll = settings.get("scraper.scroll_depth", 6)
         
-        for i in range(1, prof_scroll): 
-            scroll_pt = random.randint(400, 700)
-            self.driver.execute_script(f"window.scrollBy(0, {scroll_pt});")
+        for i in range(1, profun_scroll): 
+            scroll_pont = random.randint(400, 700)
+            self.driver.execute_script(f"window.scrollBy(0, {scroll_pont});")
             time.sleep(random.uniform(1.5, 3.0))
-            alt_nov = self.driver.execute_script("return document.body.scrollHeight")
-            if alt_nov == alt_at and i > 2: break
-            alt_at = alt_nov
+            altura_nova = self.driver.execute_script("return document.body.scrollHeight")
+            if altura_nova == altura_atua and i > 2: break
+            altura_atua = altura_nova
 
     def _remove_modals(self):
-        scripts_limp = [
+        script_limp = [
             "document.querySelectorAll('[class*=\"modal\"], [class*=\"overlay\"], [id*=\"modal\"]').forEach(el => el.remove());",
             "document.body.style.overflow = 'auto';",
             "document.querySelectorAll('button[class*=\"Close\"]').forEach(btn => btn.click());"
         ]
-        for scpt in scripts_limp:
+        for scrip_atua in script_limp:
             try:
-                self.driver.execute_script(scpt)
+                self.driver.execute_script(scrip_atua)
             except Exception:
                 pass
 
     def fetch_content(self, url):
-        lim_tent = settings.get("scraper.max_retries", 3)
-        atraso_tent = settings.get("scraper.retry_delay", 5)
+        limit_tentat = settings.get("scraper.max_retries", 3)
+        atraso_tentat = settings.get("scraper.retry_delay", 5)
 
-        for tent in range(1, lim_tent + 1):
+        for tenta_atua in range(1, limit_tentat + 1):
             try:
-                if tent > 1:
-                    logger.info(f"Retentativa {tent}/{lim_tent}: {url}")
-                    time.sleep(atraso_tent * tent)
+                if tenta_atua > 1:
+                    logger.info(f"Retentativa {tenta_atua}/{limit_tentat}: {url}")
+                    time.sleep(atraso_tentat * tenta_atua)
 
                 if not self.driver or not self.driver.service.is_connectable():
                     self._start_driver()
@@ -78,32 +78,32 @@ class WebScraper:
 
                 self.driver.get(url)
                 
-                elem_alv = settings.get("scraper.smart_wait_element", "body")
-                WebDriverWait(self.driver, 25).until(EC.presence_of_element_located((By.TAG_NAME, elem_alv)))
+                eleme_alvo = settings.get("scraper.smart_wait_element", "body")
+                WebDriverWait(self.driver, 25).until(EC.presence_of_element_located((By.TAG_NAME, eleme_alvo)))
                 
-                esp_min = settings.get("scraper.wait_time_min", 5)
-                esp_max = settings.get("scraper.wait_time_max", 8)
-                time.sleep(random.uniform(esp_min, esp_max))
+                espera_min = settings.get("scraper.wait_time_min", 5)
+                espera_max = settings.get("scraper.wait_time_max", 8)
+                time.sleep(random.uniform(espera_min, espera_max))
                 
                 self._remove_modals()
                 
                 eh_glassdoor = "glassdoor" in url.lower()
-                alt_at = self.driver.execute_script("return document.body.scrollHeight")
-                prof_scroll = settings.get("scraper.scroll_depth", 6)
+                altura_atua = self.driver.execute_script("return document.body.scrollHeight")
+                profun_scroll = settings.get("scraper.scroll_depth", 6)
                 
-                for i in range(1, prof_scroll):
-                    scroll_pt = random.randint(500, 900)
-                    self.driver.execute_script(f"window.scrollBy(0, {scroll_pt});")
+                for i in range(1, profun_scroll):
+                    scroll_pont = random.randint(500, 900)
+                    self.driver.execute_script(f"window.scrollBy(0, {scroll_pont});")
                     time.sleep(random.uniform(2, 4))
                     if eh_glassdoor: self._remove_modals()
-                    alt_nov = self.driver.execute_script("return document.body.scrollHeight")
-                    if alt_nov == alt_at and i > 3: break
-                    alt_at = alt_nov
+                    altura_nova = self.driver.execute_script("return document.body.scrollHeight")
+                    if altura_nova == altura_atua and i > 3: break
+                    altura_atua = altura_nova
                 
                 return self.driver.page_source
             
             except Exception as e:
-                logger.warning(f"Erro na tentativa {tent} para {url}: {e}")
+                logger.warning(f"Erro na tentativa {tenta_atua} para {url}: {e}")
                 if self.driver:
                     try: self.driver.quit()
                     except: pass
