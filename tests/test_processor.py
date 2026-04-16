@@ -29,13 +29,14 @@ def test_clean_html(mock_processor):
         </body>
     </html>
     """
-    cleaned = mock_processor._clean_html(html)
-    
-    assert "<script" not in cleaned
-    assert "<header" not in cleaned
-    assert "<nav" not in cleaned
-    assert "<footer" not in cleaned
-    assert "<svg" not in cleaned
+    cleaned = mock_processor._clean_html_soup(html)
+
+    assert "Logo" not in cleaned
+    assert "Links" not in cleaned
+    assert "Contact" not in cleaned
+    assert "Vaga de Python" in cleaned
+    assert "Descricao aqui" in cleaned
+
     assert "<button" not in cleaned
     assert "Vaga de Python" in cleaned
     assert "Descricao aqui" in cleaned
