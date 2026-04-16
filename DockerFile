@@ -37,4 +37,4 @@ RUN sed -i '/pandas/d' requirements.txt && \
 
 COPY . .
 
-CMD ["python", "app/main.py"]
+CMD ["python", "-m", "app.main"]

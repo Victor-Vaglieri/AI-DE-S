@@ -43,9 +43,7 @@ jobs:
       - name: Run Scraper Pipeline
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          TARGET_MODE: ${{ vars.TARGET_MODE }}
-          URLS_FILE_PATH: "config/sites_vagas.txt"
-        run: python -m app.main
+        run: python -m app.main --mode ${{ vars.TARGET_MODE || 'jobs' }} --urls "config/sites-vagas.txt"
 
       - name: Commit and Push Results
         run: |
