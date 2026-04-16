@@ -6,6 +6,8 @@ O AI-DE-S é uma solução de engenharia de dados projetada para capturar inform
 
 O projeto é fundamentado em um pipeline de ETL (Extração, Transformação e Carga) modular, permitindo a transição entre diferentes nichos de dados (ex: vagas de emprego, hardware) apenas pela alteração de esquemas Pydantic e configurações YAML.
 
+<img width="780" height="545" alt="Imagem1" src="https://github.com/user-attachments/assets/cca51ef9-55c3-4930-a0f0-99b711900ea9" />
+
 ### Componentes Principais
 
 *   **Extração Resiliente:** Utiliza `undetected-chromedriver` com técnicas de emulação de comportamento humano (scroll dinâmico) e gerenciamento de retentativas automáticas para mitigar bloqueios anti-bot.
