@@ -1,6 +1,7 @@
 import random
 import time
 import logging
+import threading
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -10,6 +11,8 @@ from app.settings import settings
 logger = logging.getLogger("AI-DE-S.Scraper")
 
 class WebScraper:
+    _driver_lock = threading.Lock()
+
     def __init__(self):
         self.driver = None
     
@@ -21,6 +24,8 @@ class WebScraper:
         opcoes_chrome.add_argument("--disable-dev-shm-usage")
         opcoes_chrome.add_argument("--disable-gpu")
         opcoes_chrome.add_argument("--window-size=1920,1080")
+        opcoes_chrome.add_argument("--disable-extensions")
+        opcoes_chrome.add_argument("--disable-setuid-sandbox")
         
         user_agent_str = settings.get('scraper.user_agent')
         opcoes_chrome.add_argument(f"user-agent={user_agent_str}")
@@ -29,7 +34,14 @@ class WebScraper:
     def _start_driver(self):
         try:
             logger.info("Iniciando Chrome...")
-            self.driver = uc.Chrome(options=self._get_options(), version_main=146)
+            with self._driver_lock:
+                self.driver = uc.Chrome(
+                    options=self._get_options(),
+                    version_main=146,
+                    use_subprocess=False,
+                    suppress_welcome=True
+                )
+            
             self.driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
                 "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
             })
