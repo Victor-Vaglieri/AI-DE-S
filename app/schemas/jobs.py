@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 
 class JobListing(BaseModel):
@@ -9,6 +9,15 @@ class JobListing(BaseModel):
     salario: Optional[str] = Field(default="Não informado", description="Faixa salarial se mencionada")
     requisitos: List[str] = Field(default_factory=list, description="Tecnologias ou habilidades")
     link_inscricao: Optional[str] = Field(default="", description="URL direta da vaga")
+
+    @field_validator('requisitos', mode='before')
+    @classmethod
+    def validate_requisitos(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [v]
+        return v
 
 class JobList(BaseModel):
     vagas: List[JobListing] = Field(default_factory=list, description="Lista de todas as oportunidades")
