@@ -37,8 +37,7 @@ class WebScraper:
             with self._driver_lock:
                 self.driver = uc.Chrome(
                     options=self._get_options(),
-                    version_main=146,
-                    use_subprocess=False,
+                    use_subprocess=True,
                     suppress_welcome=True
                 )
             
