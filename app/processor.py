@@ -16,7 +16,7 @@ class DataProcessor:
             logger.critical("Chave GROQ não encontrada nas variáveis de ambiente.")
             raise ValueError("chave api ausente")
         
-        self.client = Groq(api_key=self.api_key)
+        self.client = Groq(api_key=self.api_key, max_retries=5)
 
     def _clean_html_soup(self, html):
         objeto_sopa = BeautifulSoup(html, 'lxml')
