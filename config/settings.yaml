@@ -20,5 +20,5 @@ processor:
 pipeline:
   output_path: "data/output"
   db_url: "sqlite:///data/ai_des.db"
-  max_workers: 3 
+  max_workers: 2 
 
