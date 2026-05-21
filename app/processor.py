@@ -2,7 +2,8 @@ import os
 import json
 import re
 import logging
-from groq import Groq
+import time
+from groq import Groq, RateLimitError
 from pydantic import ValidationError
 from bs4 import BeautifulSoup
 from app.settings import settings
@@ -16,7 +17,8 @@ class DataProcessor:
             logger.critical("Chave GROQ não encontrada nas variáveis de ambiente.")
             raise ValueError("chave api ausente")
         
-        self.client = Groq(api_key=self.api_key, max_retries=5)
+        # Aumentamos o número de retentativas internas do cliente
+        self.client = Groq(api_key=self.api_key, max_retries=8)
 
     def _clean_html_soup(self, html):
         objeto_sopa = BeautifulSoup(html, 'lxml')
@@ -48,22 +50,34 @@ class DataProcessor:
         TEXTO: {texto_proce}
         """
 
-        try:
-            respon_ia = self.client.chat.completions.create(
-                model=settings.get("llm.model", "llama-3.3-70b-versatile"),
-                messages=[
-                    {"role": "system", "content": "Você é um extrator de dados estruturados especialista em JSON."},
-                    {"role": "user", "content": prompt_ia}
-                ],
-                response_format={"type": "json_object"},
-                temperature=settings.get("llm.temperature", 0.1),
-                max_tokens=settings.get("llm.max_tokens", 4096)
-            )
-            json_respo = json.loads(respon_ia.choices[0].message.content)
-            return schema(**json_respo)
-        except ValidationError as e:
-            logger.error(f"Dados retornados pela IA não batem com o Schema: {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Erro na comunicação ou processamento da IA: {e}")
-            return None
+        tentativas_max = 3
+        for tentativa in range(tentativas_max):
+            try:
+                respon_ia = self.client.chat.completions.create(
+                    model=settings.get("llm.model", "llama-3.3-70b-versatile"),
+                    messages=[
+                        {"role": "system", "content": "Você é um extrator de dados estruturados especialista em JSON."},
+                        {"role": "user", "content": prompt_ia}
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=settings.get("llm.temperature", 0.1),
+                    max_tokens=settings.get("llm.max_tokens", 4096)
+                )
+                json_respo = json.loads(respon_ia.choices[0].message.content)
+                return schema(**json_respo)
+            
+            except RateLimitError as e:
+                logger.warning(f"Limite de taxa atingido (429). Tentativa {tentativa + 1}/{tentativas_max}. Aguardando...")
+                # Groq costuma enviar o tempo de espera no header, mas aqui simplificamos com backoff
+                time.sleep(10 * (tentativa + 1))
+                continue
+            except ValidationError as e:
+                logger.error(f"Dados retornados pela IA não batem com o Schema: {e}")
+                return None
+            except Exception as e:
+                logger.error(f"Erro na comunicação ou processamento da IA: {e}")
+                if tentativa < tentativas_max - 1:
+                    time.sleep(2)
+                    continue
+                return None
+        return None
