@@ -2,6 +2,8 @@ import random
 import time
 import logging
 import threading
+import subprocess
+import re
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -12,10 +14,32 @@ logger = logging.getLogger("AI-DE-S.Scraper")
 
 class WebScraper:
     _driver_lock = threading.Lock()
+    _chrome_version = None
 
     def __init__(self):
         self.driver = None
     
+    def _get_chrome_version(self):
+        """Detecta e faz cache da versão majoritária do Chrome."""
+        if WebScraper._chrome_version:
+            return WebScraper._chrome_version
+            
+        try:
+            for cmd in ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser']:
+                try:
+                    output = subprocess.check_output([cmd, '--version']).decode('utf-8')
+                    match = re.search(r'Google Chrome (\d+)', output) or re.search(r'Chromium (\d+)', output)
+                    if match:
+                        version = int(match.group(1))
+                        WebScraper._chrome_version = version
+                        logger.info(f"Versão do Chrome detectada: {version}")
+                        return version
+                except Exception:
+                    continue
+        except Exception as e:
+            logger.debug(f"Erro ao detectar versão do Chrome: {e}")
+        return None
+
     def _get_options(self):
         opcoes_chrome = uc.ChromeOptions()
         if settings.get("scraper.headless", True):
@@ -26,6 +50,7 @@ class WebScraper:
         opcoes_chrome.add_argument("--window-size=1920,1080")
         opcoes_chrome.add_argument("--disable-extensions")
         opcoes_chrome.add_argument("--disable-setuid-sandbox")
+        opcoes_chrome.add_argument("--disable-software-rasterizer")
         
         user_agent_str = settings.get('scraper.user_agent')
         opcoes_chrome.add_argument(f"user-agent={user_agent_str}")
@@ -33,12 +58,17 @@ class WebScraper:
 
     def _start_driver(self):
         try:
-            logger.info("Iniciando Chrome...")
+            version_main = self._get_chrome_version()
             with self._driver_lock:
+                logger.info("Iniciando instância do Chrome...")
+                # Pequeno delay para evitar que múltiplas instâncias tentem patchear ao mesmo tempo
+                time.sleep(random.uniform(1.0, 3.0))
+                
                 self.driver = uc.Chrome(
                     options=self._get_options(),
                     use_subprocess=True,
-                    suppress_welcome=True
+                    suppress_welcome=True,
+                    version_main=version_main
                 )
             
             self.driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
@@ -46,6 +76,9 @@ class WebScraper:
             })
         except Exception as e:
             logger.error(f"Falha ao abrir navegador: {e}")
+            if self.driver:
+                try: self.driver.quit()
+                except: pass
             self.driver = None
 
     def _human_scroll(self):
