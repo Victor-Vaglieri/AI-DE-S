@@ -1,4 +1,4 @@
-https://codevagas.dev/?level=junior%2Cmid&work_model=remote%2Chybrid%2Consite&date_filter=today
+https://nerdin.com.br/vagas.php?filtro_nome=junior
 https://www.linkedin.com/jobs/search/?currentJobId=4384713345&distance=25&f_TPR=r86400&geoId=105871508&keywords=Desenvolvedor%20jr&origin=JOB_SEARCH_PAGE_JOB_FILTER&refresh=true
 https://www.linkedin.com/jobs/search/?currentJobId=4400446675&distance=25&f_E=2%2C3%2C4&f_TPR=r86400&geoId=105871508&keywords=Engenheiro%20de%20software&origin=JOB_SEARCH_PAGE_JOB_FILTER&refresh=true&spellCorrectionEnabled=true
 https://br.indeed.com/jobs?q=desenvolvedor&l=S%C3%A3o+Paulo%2C+SP&sort=date&fromage=last&radius=25&sc=0kf%3Aattr%285QWDV%7CCF3CP%7CT65DZ%252COR%29%3B&from=searchOnDesktopSerp&vjk=8ca70d89eb50229d
