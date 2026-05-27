@@ -13,3 +13,4 @@ playwright
 markdownify
 instructor
 tenacity
+undetected-chromedriver
