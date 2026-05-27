@@ -1,5 +1,6 @@
 import argparse
 import sys
+import asyncio
 from dotenv import load_dotenv
 from app.pipeline import Pipeline
 from app.settings import settings
@@ -32,7 +33,9 @@ def main():
     pipeline = Pipeline(mode=args.mode, urls_file=args.urls)
     
     try:
-        pipeline.run()
+        asyncio.run(pipeline.run())
+    except KeyboardInterrupt:
+        print("\nOperação cancelada pelo usuário.")
     except Exception as e:
         print(f"Erro fatal: {e}")
         sys.exit(1)

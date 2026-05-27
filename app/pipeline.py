@@ -1,8 +1,6 @@
 import os
-import time
+import asyncio
 import logging
-import threading
-from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 from app.logger_config import logger
 from app.github_project_ex import GitHubProjectExporter 
@@ -34,7 +32,7 @@ class Pipeline:
         
         self.processor = DataProcessor()
         self.itens_vistos = set()
-        self._trava = threading.Lock()
+        self._trava = asyncio.Lock()
 
     def _preparar_ambiente(self):
         os.makedirs("data", exist_ok=True)
@@ -67,36 +65,35 @@ class Pipeline:
         except Exception:
             return "Web"
 
-    def process_url(self, url, indice_at, total):
-        logger.info(f"[{indice_at}/{total}] Iniciando captura: {url}")
-        navegador = WebScraper()
-        
-        try:
-            texto_bruto = navegador.fetch_content(url)
-            if not texto_bruto:
-                logger.warning(f"[{indice_at}/{total}] Conteúdo vazio ou erro: {url}")
-                return
+    async def process_url(self, url, indice_at, total, semaphore):
+        async with semaphore:
+            logger.info(f"[{indice_at}/{total}] Iniciando captura: {url}")
+            navegador = WebScraper()
+            
+            try:
+                texto_bruto = await navegador.fetch_content(url)
+                if not texto_bruto:
+                    logger.warning(f"[{indice_at}/{total}] Conteúdo vazio ou erro: {url}")
+                    return
 
-            dados_estru = self.processor.process(texto_bruto, self.schema)
-            if not dados_estru:
-                logger.error(f"[{indice_at}/{total}] IA falhou ao estruturar: {url}")
-                return
+                dados_estru = await self.processor.process(texto_bruto, self.schema)
+                if not dados_estru:
+                    logger.error(f"[{indice_at}/{total}] IA falhou ao estruturar: {url}")
+                    return
 
-            lista_itens = getattr(dados_estru, 'vagas', []) if self.mode == "jobs" else getattr(dados_estru, 'produtos', [])
-            if not lista_itens:
-                logger.warning(f"[{indice_at}/{total}] Nenhum item identificado: {url}")
-                return
+                lista_itens = getattr(dados_estru, 'vagas', []) if self.mode == "jobs" else getattr(dados_estru, 'produtos', [])
+                if not lista_itens:
+                    logger.warning(f"[{indice_at}/{total}] Nenhum item identificado: {url}")
+                    return
 
-            logger.info(f"[{indice_at}/{total}] Sucesso: {len(lista_itens)} itens de {url}")
-            for item in lista_itens:
-                self._process_item(item, url)
-                
-        except Exception as e:
-            logger.error(f"[{indice_at}/{total}] Erro inesperado na thread: {e}")
-        finally:
-            navegador.close()
+                logger.info(f"[{indice_at}/{total}] Sucesso: {len(lista_itens)} itens de {url}")
+                for item in lista_itens:
+                    await self._process_item(item, url)
+                    
+            except Exception as e:
+                logger.error(f"[{indice_at}/{total}] Erro inesperado na tarefa: {e}")
 
-    def run(self):
+    async def run(self):
         self._preparar_ambiente()
         lista_urls = self._load_urls()
         
@@ -109,23 +106,28 @@ class Pipeline:
             logger.error("Nenhuma URL para processar.")
             return
 
-        with ThreadPoolExecutor(max_workers=num_trabalhadores) as executor:
-            total_urls = len(lista_urls)
-            for indice_at, url in enumerate(lista_urls, 1):
-                executor.submit(self.process_url, url, indice_at, total_urls)
+        semaphore = asyncio.Semaphore(num_trabalhadores)
+        total_urls = len(lista_urls)
+        
+        tarefas = []
+        for indice_at, url in enumerate(lista_urls, 1):
+            tarefas.append(self.process_url(url, indice_at, total_urls, semaphore))
+        
+        await asyncio.gather(*tarefas)
+        await WebScraper.close_browser()
         
         logger.info("=" * 40)
         logger.info("PIPELINE FINALIZADO")
         logger.info("=" * 40)
 
-    def _process_item(self, item, source_url):
+    async def _process_item(self, item, source_url):
         # Chave para deduplicação
         if self.mode == "jobs":
             chave_item = f"{item.titulo.lower()}|{item.empresa.lower()}"
         else:
             chave_item = f"{item.produto.lower()}|{getattr(item, 'loja', 'unknown').lower()}"
 
-        with self._trava:
+        async with self._trava:
             if chave_item in self.itens_vistos:
                 logger.debug(f"Duplicata ignorada: {chave_item}")
                 return
@@ -146,8 +148,7 @@ class Pipeline:
         
         for exportador in self.exporters:
             try:
-                exportador.save(item, self.mode)
+                await asyncio.to_thread(exportador.save, item, self.mode)
             except Exception as e:
                 logger.error(f"Erro no exportador {exportador.__class__.__name__}: {e}")
-
 
