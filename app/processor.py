@@ -1,83 +1,60 @@
 import os
-import json
-import re
 import logging
-import time
-from groq import Groq, RateLimitError
-from pydantic import ValidationError
+import instructor
+from groq import AsyncGroq
 from bs4 import BeautifulSoup
+from markdownify import markdownify as md
+from pydantic import BaseModel
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from app.settings import settings
 
 logger = logging.getLogger("AI-DE-S.Processor")
 
 class DataProcessor:
     def __init__(self):
-        self.api_key = os.getenv("GROQ_API_KEY")
+        self.api_key = os.getenv("LLM_API_KEY")
         if not self.api_key:
-            logger.critical("Chave GROQ não encontrada nas variáveis de ambiente.")
+            logger.critical("Chave LLM (LLM_API_KEY) não encontrada nas variáveis de ambiente.")
             raise ValueError("chave api ausente")
         
-        # Aumentamos o número de retentativas internas do cliente
-        self.client = Groq(api_key=self.api_key, max_retries=8)
+        self.client = instructor.from_groq(AsyncGroq(api_key=self.api_key))
 
-    def _clean_html_soup(self, html):
+    def _clean_html_soup(self, html: str) -> str:
         objeto_sopa = BeautifulSoup(html, 'lxml')
         
         for tag_item in objeto_sopa(["script", "style", "svg", "noscript", "header", "footer", "nav", "iframe", "button"]):
             tag_item.decompose()
 
-        for tag_atua in objeto_sopa.find_all(True):
-            atrib_permi = ['href', 'src', 'class', 'id']
-            atrib_atuais = dict(tag_atua.attrs)
-            for nome_atrib in atrib_atuais:
-                if nome_atrib not in atrib_permi:
-                    del tag_atua[nome_atrib]
-
-        texto_limpo = objeto_sopa.get_text(separator=' ', strip=True)
+        texto_limpo = md(str(objeto_sopa), strip=['a', 'img'], heading_style="ATX")
+        texto_limpo = "\n".join([line.strip() for line in texto_limpo.splitlines() if line.strip()])
+        
         limit_carac = settings.get("processor.max_html_chars", 18000)
         return texto_limpo[:limit_carac]
 
-    def process(self, raw_html, schema):
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=4, max=20),
+        retry=retry_if_exception_type(Exception),
+        reraise=True
+    )
+    async def process(self, raw_html: str, schema: type[BaseModel]):
         logger.info(f"Iniciando análise com schema: {schema.__name__}")
 
         texto_proce = self._clean_html_soup(raw_html)
-        esquema_json = schema.model_json_schema()
 
-        prompt_ia = f"""
-        Extraia as informações deste texto de página web seguindo o schema JSON:
-        {json.dumps(esquema_json, indent=2)}
-        Responda APENAS o JSON válido.
-        TEXTO: {texto_proce}
-        """
-
-        tentativas_max = 3
-        for tentativa in range(tentativas_max):
-            try:
-                respon_ia = self.client.chat.completions.create(
-                    model=settings.get("llm.model", "llama-3.3-70b-versatile"),
-                    messages=[
-                        {"role": "system", "content": "Você é um extrator de dados estruturados especialista em JSON."},
-                        {"role": "user", "content": prompt_ia}
-                    ],
-                    response_format={"type": "json_object"},
-                    temperature=settings.get("llm.temperature", 0.1),
-                    max_tokens=settings.get("llm.max_tokens", 4096)
-                )
-                json_respo = json.loads(respon_ia.choices[0].message.content)
-                return schema(**json_respo)
+        try:
+            resposta = await self.client.chat.completions.create(
+                model=settings.get("llm.model", "llama-3.3-70b-versatile"),
+                response_model=schema,
+                messages=[
+                    {"role": "system", "content": "Você é um extrator de dados estruturados especialista. Extraia as informações do texto."},
+                    {"role": "user", "content": texto_proce}
+                ],
+                temperature=settings.get("llm.temperature", 0.1),
+                max_tokens=settings.get("llm.max_tokens", 4096)
+            )
+            return resposta
             
-            except RateLimitError as e:
-                logger.warning(f"Limite de taxa atingido (429). Tentativa {tentativa + 1}/{tentativas_max}. Aguardando...")
-                # Groq costuma enviar o tempo de espera no header, mas aqui simplificamos com backoff
-                time.sleep(10 * (tentativa + 1))
-                continue
-            except ValidationError as e:
-                logger.error(f"Dados retornados pela IA não batem com o Schema: {e}")
-                return None
-            except Exception as e:
-                logger.error(f"Erro na comunicação ou processamento da IA: {e}")
-                if tentativa < tentativas_max - 1:
-                    time.sleep(2)
-                    continue
-                return None
-        return None
+        except Exception as e:
+            logger.error(f"Erro na comunicação ou processamento da IA: {e}")
+            raise
