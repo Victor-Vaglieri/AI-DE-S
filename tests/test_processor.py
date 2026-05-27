@@ -6,7 +6,7 @@ import os
 
 @pytest.fixture
 def mock_processor(monkeypatch):
-    monkeypatch.setenv("GROQ_API_KEY", "test_key")
+    monkeypatch.setenv("LLM_API_KEY", "test_key")
     with pytest.MonkeyPatch().context() as m:
         m.setattr("app.processor.Groq", MagicMock())
         processor = DataProcessor()
