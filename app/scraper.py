@@ -28,7 +28,6 @@ class WebScraper:
         if sys.platform == 'win32':
             import winreg
             try:
-                # Tenta buscar do HKEY_CURRENT_USER
                 key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Google\Chrome\BLBeacon")
                 version, _ = winreg.QueryValueEx(key, "version")
                 match = re.search(r'^(\d+)', version)
