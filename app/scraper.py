@@ -24,6 +24,33 @@ class WebScraper:
         if WebScraper._chrome_version:
             return WebScraper._chrome_version
             
+        import sys
+        if sys.platform == 'win32':
+            import winreg
+            try:
+                # Tenta buscar do HKEY_CURRENT_USER
+                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Google\Chrome\BLBeacon")
+                version, _ = winreg.QueryValueEx(key, "version")
+                match = re.search(r'^(\d+)', version)
+                if match:
+                    version = int(match.group(1))
+                    WebScraper._chrome_version = version
+                    logger.info(f"Versão do Chrome detectada: {version}")
+                    return version
+            except Exception as e:
+                logger.debug(f"Erro ao detectar versão do Chrome no HKCU: {e}")
+            try:
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Google Chrome")
+                version, _ = winreg.QueryValueEx(key, "version")
+                match = re.search(r'^(\d+)', version)
+                if match:
+                    version = int(match.group(1))
+                    WebScraper._chrome_version = version
+                    logger.info(f"Versão do Chrome detectada: {version}")
+                    return version
+            except Exception as e:
+                logger.debug(f"Erro ao detectar versão do Chrome no HKLM: {e}")
+
         try:
             for cmd in ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser']:
                 try:
