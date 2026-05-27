@@ -20,7 +20,6 @@ class WebScraper:
         self.driver = None
     
     def _get_chrome_version(self):
-        """Detecta e faz cache da versão majoritária do Chrome."""
         if WebScraper._chrome_version:
             return WebScraper._chrome_version
             
