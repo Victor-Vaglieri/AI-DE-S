@@ -2,7 +2,7 @@ name: AI DE&S Daily Scraper
 
 on:
   schedule:
-    - cron: '0 19 * * *'
+    - cron: '30 12 * * *'
   push:
     branches: [ main ]
   workflow_dispatch:
