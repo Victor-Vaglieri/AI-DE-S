@@ -29,7 +29,7 @@ O projeto é fundamentado em um pipeline de ETL (Extração, Transformação e C
 
 ### Requisitos Prévios
 *   Python 3.11 ou superior instalado.
-*   Chave de API do provedor Groq configurada nas variáveis de ambiente.
+*   Chave de API do provedor LLM (ex: Google Gemini, OpenAI, etc) configurada nas variáveis de ambiente.
 
 ### Procedimento de Instalação
 1. Clone o repositório:
@@ -43,7 +43,7 @@ O projeto é fundamentado em um pipeline de ETL (Extração, Transformação e C
    ```
 3. Configure o arquivo `.env` com base no `.env.example`:
    ```env
-   GROQ_API_KEY=sua_chave_aqui
+   LLM_API_KEY=sua_chave_aqui
    GITHUB_TOKEN=seu_token_aqui
    PROJECT_ID=id_do_projeto
    ```

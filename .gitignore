@@ -39,7 +39,8 @@ data/output/
 .idea/
 
 # IAs
-
 GEMINI.md
 CLAUDE.md
 DOCUMENTACAO.md
+
+.*/
