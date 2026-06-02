@@ -5,7 +5,6 @@ import os
 def setup_logging(level=logging.INFO):
     os.makedirs("data", exist_ok=True)
     
-    # Custom format for better visibility
     log_format = '[%(levelname)s] %(name)s: %(message)s'
     
     logging.basicConfig(
@@ -17,8 +16,7 @@ def setup_logging(level=logging.INFO):
         ]
     )
     
-    # Silenciar bibliotecas externas barulhentas
-    for lib_name in ["selenium", "urllib3", "requests", "undetected_chromedriver", "hpack", "httpcore"]:
+    for lib_name in ["selenium", "urllib3", "requests", "undetected_chromedriver", "hpack", "httpcore", "google_genai.models", "httpx"]:
         logging.getLogger(lib_name).setLevel(logging.WARNING)
 
 setup_logging()

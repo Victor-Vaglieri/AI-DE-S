@@ -1,7 +1,8 @@
 import os
 import logging
+import asyncio
 import instructor
-from groq import AsyncGroq
+from google import genai
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 from pydantic import BaseModel
@@ -17,7 +18,10 @@ class DataProcessor:
             logger.critical("Chave LLM (LLM_API_KEY) não encontrada nas variáveis de ambiente.")
             raise ValueError("chave api ausente")
         
-        self.client = instructor.from_groq(AsyncGroq(api_key=self.api_key))
+        self.client = instructor.from_genai(
+            client=genai.Client(api_key=self.api_key),
+            mode=instructor.Mode.GENAI_STRUCTURED_OUTPUTS
+        )
 
     def _clean_html_soup(self, html: str) -> str:
         objeto_sopa = BeautifulSoup(html, 'lxml')
@@ -43,15 +47,18 @@ class DataProcessor:
         texto_proce = self._clean_html_soup(raw_html)
 
         try:
-            resposta = await self.client.chat.completions.create(
-                model=settings.get("llm.model", "llama-3.3-70b-versatile"),
+            resposta = await asyncio.to_thread(
+                self.client.chat.completions.create,
+                model=settings.get("llm.model", "gemini-2.5-flash"),
                 response_model=schema,
                 messages=[
                     {"role": "system", "content": "Você é um extrator de dados estruturados especialista. Extraia as informações do texto."},
                     {"role": "user", "content": texto_proce}
                 ],
-                temperature=settings.get("llm.temperature", 0.1),
-                max_tokens=settings.get("llm.max_tokens", 4096)
+                config=genai.types.GenerateContentConfig(
+                    temperature=settings.get("llm.temperature", 0.1),
+                    max_output_tokens=settings.get("llm.max_tokens", 4096)
+                )
             )
             return resposta
             
