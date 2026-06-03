@@ -1,15 +1,19 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from app.processor import DataProcessor
 from app.schemas.jobs import JobList
 import os
 
 @pytest.fixture
+def anyio_backend():
+    return 'asyncio'
+
+@pytest.fixture
 def mock_processor(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "test_key")
-    with pytest.MonkeyPatch().context() as m:
-        m.setattr("app.processor.Groq", MagicMock())
+    with patch("app.processor.genai.Client"), patch("app.processor.instructor.from_genai"):
         processor = DataProcessor()
+        processor.client = MagicMock()
     return processor
 
 def test_clean_html(mock_processor):
@@ -41,20 +45,19 @@ def test_clean_html(mock_processor):
     assert "Vaga de Python" in cleaned
     assert "Descricao aqui" in cleaned
 
-def test_processor_invalid_json(mock_processor, mocker):
-    mock_response = MagicMock()
-    mock_response.choices[0].message.content = "Not a JSON"
-    mock_processor.client.chat.completions.create.return_value = mock_response
+@pytest.mark.anyio
+async def test_processor_invalid_json(mock_processor):
+    mock_processor.client.chat.completions.create.side_effect = Exception("Invalid JSON")
     
-    result = mock_processor.process("<html>test</html>", JobList)
-    assert result is None
+    with pytest.raises(Exception):
+        await mock_processor.process("<html>test</html>", JobList)
 
-def test_processor_success(mock_processor, mocker):
-    mock_response = MagicMock()
-    mock_response.choices[0].message.content = '{"vagas": [{"titulo": "Python Developer", "empresa": "Tech Corp"}]}'
+@pytest.mark.anyio
+async def test_processor_success(mock_processor):
+    mock_response = JobList(vagas=[{"titulo": "Python Developer", "empresa": "Tech Corp"}])
     mock_processor.client.chat.completions.create.return_value = mock_response
     
-    result = mock_processor.process("<html>test</html>", JobList)
+    result = await mock_processor.process("<html>test</html>", JobList)
     assert isinstance(result, JobList)
     assert len(result.vagas) == 1
     assert result.vagas[0].titulo == "Python Developer"
