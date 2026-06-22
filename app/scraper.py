@@ -68,25 +68,21 @@ class WebScraper:
             try:
                 await page.wait_for_selector(target_element, timeout=15000)
             except PlaywrightTimeoutError:
-                logger.warning(f"Timeout aguardando {target_element} em {url}")
+                logger.warning(f"Timeout aguardando {target_element} em {url}. Continuando assim mesmo.")
 
-            # Human scroll
+            # scroll
             scroll_depth = settings.get("scraper.scroll_depth", 6)
             for _ in range(scroll_depth):
                 scroll_amount = random.randint(400, 800)
                 await page.evaluate(f"window.scrollBy(0, {scroll_amount});")
                 await asyncio.sleep(random.uniform(0.5, 1.5))
             
-            # Remove modals
-            await page.evaluate("""
-                document.querySelectorAll('[class*="modal"], [class*="overlay"], [id*="modal"]').forEach(el => el.remove());
-                document.body.style.overflow = 'auto';
-                document.querySelectorAll('button[class*="Close"]').forEach(btn => btn.click());
-            """)
-
             content = await page.content()
             return content
             
+        except PlaywrightTimeoutError as pte:
+            logger.error(f"Timeout total ao extrair {url}: {pte}")
+            raise
         except Exception as e:
             logger.error(f"Erro ao extrair {url}: {str(e)}")
             raise
