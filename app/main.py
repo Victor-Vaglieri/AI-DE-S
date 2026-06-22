@@ -8,16 +8,11 @@ from app.settings import settings
 load_dotenv()
 
 def main():
-    parser = argparse.ArgumentParser(description="AI-DE-S")
-    parser.add_argument(
-        "--mode", 
-        choices=["jobs", "hardware"], 
-        default="jobs", 
-        help="Modo de operacao (jobs ou hardware)"
-    )
+    parser = argparse.ArgumentParser(description="AI-DE-S: Scraper de Vagas")
     parser.add_argument(
         "--urls", 
-        help="Caminho para o arquivo de URLs (opcional)"
+        help="Caminho para o arquivo de URLs (opcional)",
+        default="config/sites-vagas.txt"
     )
     parser.add_argument(
         "--config", 
@@ -30,14 +25,14 @@ def main():
     if args.config != "config/settings.yaml":
         settings.__init__(args.config)
 
-    pipeline = Pipeline(mode=args.mode, urls_file=args.urls)
+    pipeline = Pipeline(urls_file=args.urls)
     
     try:
         asyncio.run(pipeline.run())
     except KeyboardInterrupt:
         print("\nOperação cancelada pelo usuário.")
     except Exception as e:
-        print(f"Erro fatal: {e}")
+        print(f"Erro fatal não tratado no sistema: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
