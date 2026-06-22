@@ -9,16 +9,14 @@ from app.sql_exporter import SqlExporter
 from app.scraper import WebScraper
 from app.processor import DataProcessor
 from app.schemas.jobs import JobList
-from app.schemas.hardware import HardwareList
 from app.settings import settings
+from pydantic import ValidationError
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 class Pipeline:
-    def __init__(self, mode="jobs", urls_file=None, config_path=None):
-        self.mode = mode
-        self.urls_file = urls_file or (
-            "config/sites-vagas.txt" if mode == "jobs" else "config/sites-hardware.txt"
-        )
-        self.schema = JobList if mode == "jobs" else HardwareList
+    def __init__(self, urls_file=None, config_path=None):
+        self.urls_file = urls_file or "config/sites-vagas.txt"
+        self.schema = JobList
         
         out_path = settings.get("pipeline.output_path", "data/output")
         self.caminho_saida = out_path
@@ -76,22 +74,68 @@ class Pipeline:
                     logger.warning(f"[{indice_at}/{total}] Conteúdo vazio ou erro: {url}")
                     return
 
-                dados_estru = await self.processor.process(texto_bruto, self.schema)
-                if not dados_estru:
-                    logger.error(f"[{indice_at}/{total}] IA falhou ao estruturar: {url}")
-                    return
-
-                lista_itens = getattr(dados_estru, 'vagas', []) if self.mode == "jobs" else getattr(dados_estru, 'produtos', [])
-                if not lista_itens:
-                    logger.warning(f"[{indice_at}/{total}] Nenhum item identificado: {url}")
-                    return
-
-                logger.info(f"[{indice_at}/{total}] Sucesso: {len(lista_itens)} itens de {url}")
-                for item in lista_itens:
-                    await self._process_item(item, url)
+                from bs4 import BeautifulSoup
+                sopa = BeautifulSoup(texto_bruto, 'lxml')
+                
+                job_links = []
+                for a_tag in sopa.select('a.base-card__full-link, a.job-search-card__link, a[href*="/job/"], a[href*="/vaga/"]'):
+                    href = a_tag.get('href')
+                    if href and href not in job_links and 'http' in href:
+                        job_links.append(href)
+                
+                if job_links and len(job_links) > 1:
+                    logger.info(f"[{indice_at}/{total}] Encontrados {len(job_links)} links de vagas. Extraindo detalhes de todas (em lotes de 10) para otimizar tokens...")
+                    batch_size = settings.get("pipeline.job_batch_size", 10)
                     
+                    for i in range(0, len(job_links), batch_size):
+                        lote_links = job_links[i:i+batch_size]
+                        textos_vagas = []
+                        
+                        logger.info(f"[{indice_at}/{total}] Processando lote {i//batch_size + 1} com {len(lote_links)} vagas...")
+                        for j_url in lote_links:
+                            try:
+                                vaga_html = await navegador.fetch_content(j_url)
+                                texto_limpo_vaga = self.processor._clean_html_soup(vaga_html)
+                                textos_vagas.append(f"URL: {j_url}\n{texto_limpo_vaga}")
+                            except Exception as e:
+                                logger.error(f"Erro ao extrair link de vaga {j_url}: {e}")
+                                
+                        texto_final = "\n\n=== NOVA VAGA ===\n\n".join(textos_vagas)
+                        
+                        # Processa este lote com a IA
+                        try:
+                            dados_estru = await self.processor.process(texto_final, self.schema)
+                            if dados_estru and getattr(dados_estru, 'vagas', []):
+                                lista_itens = dados_estru.vagas
+                                logger.info(f"[{indice_at}/{total}] Lote {i//batch_size + 1} processado: {len(lista_itens)} itens.")
+                                for item in lista_itens:
+                                    await self._process_item(item, url)
+                            else:
+                                logger.warning(f"[{indice_at}/{total}] Nenhum item identificado no lote {i//batch_size + 1}.")
+                        except ValidationError as ve:
+                            logger.error(f"[{indice_at}/{total}] IA retornou formato inválido no lote {i//batch_size + 1}: {ve}")
+                        except Exception as e:
+                            logger.error(f"[{indice_at}/{total}] IA falhou ao estruturar o lote {i//batch_size + 1}: {e}")
+                else:
+                    texto_final = texto_bruto
+                    try:
+                        dados_estru = await self.processor.process(texto_final, self.schema)
+                        if not dados_estru or not getattr(dados_estru, 'vagas', []):
+                            logger.warning(f"[{indice_at}/{total}] Nenhum item identificado: {url}")
+                            return
+
+                        lista_itens = dados_estru.vagas
+                        logger.info(f"[{indice_at}/{total}] Sucesso: {len(lista_itens)} itens de {url}")
+                        for item in lista_itens:
+                            await self._process_item(item, url)
+                    except ValidationError as ve:
+                        logger.error(f"[{indice_at}/{total}] Validação de dados falhou: {ve}")
+                        return
+                    
+            except PlaywrightTimeoutError:
+                logger.error(f"[{indice_at}/{total}] Timeout do navegador na URL: {url}")
             except Exception as e:
-                logger.error(f"[{indice_at}/{total}] Erro inesperado na tarefa: {e}")
+                logger.error(f"[{indice_at}/{total}] Erro inesperado na tarefa principal da URL: {e}")
 
     async def run(self):
         self._preparar_ambiente()
@@ -99,7 +143,7 @@ class Pipeline:
         
         logger.info("=" * 40)
         num_trabalhadores = settings.get("pipeline.max_workers", 3)
-        logger.info(f"AI-DE-S | MODO: {self.mode.upper()} | URLS: {len(lista_urls)} | PARALELISMO: {num_trabalhadores}")
+        logger.info(f"AI-DE-S | MODO: JOBS | URLS: {len(lista_urls)} | PARALELISMO: {num_trabalhadores}")
         logger.info("=" * 40)
 
         if not lista_urls: 
@@ -121,11 +165,7 @@ class Pipeline:
         logger.info("=" * 40)
 
     async def _process_item(self, item, source_url):
-        # Chave para deduplicação
-        if self.mode == "jobs":
-            chave_item = f"{item.titulo.lower()}|{item.empresa.lower()}"
-        else:
-            chave_item = f"{item.produto.lower()}|{getattr(item, 'loja', 'unknown').lower()}"
+        chave_item = f"{item.titulo.lower()}|{item.empresa.lower()}"
 
         async with self._trava:
             if chave_item in self.itens_vistos:
@@ -133,22 +173,21 @@ class Pipeline:
                 return
             self.itens_vistos.add(chave_item)
 
-        if self.mode == "jobs":
-            if "Título não encontrado" in item.titulo or not item.empresa.strip():
-                return
-            
-            if not item.link_inscricao or "http" not in item.link_inscricao:
-                url_parsed = urlparse(source_url)
-                link_inst = item.link_inscricao or ""
-                path_inst = link_inst if link_inst.startswith('/') else f"/{link_inst}"
-                item.link_inscricao = f"{url_parsed.scheme}://{url_parsed.netloc}{path_inst}"
+        if "Título não encontrado" in item.titulo or not item.empresa.strip():
+            return
         
-            if not item.origem or item.origem.lower() in ["desconhecida", "unknown"]:
-                item.origem = self._extrair_dominio(source_url)
+        if not item.link_inscricao or "http" not in item.link_inscricao:
+            url_parsed = urlparse(source_url)
+            link_inst = item.link_inscricao or ""
+            path_inst = link_inst if link_inst.startswith('/') else f"/{link_inst}"
+            item.link_inscricao = f"{url_parsed.scheme}://{url_parsed.netloc}{path_inst}"
+    
+        if not item.origem or item.origem.lower() in ["desconhecida", "unknown"]:
+            item.origem = self._extrair_dominio(source_url)
         
         for exportador in self.exporters:
             try:
-                await asyncio.to_thread(exportador.save, item, self.mode)
+                await asyncio.to_thread(exportador.save, item, "jobs")
             except Exception as e:
                 logger.error(f"Erro no exportador {exportador.__class__.__name__}: {e}")
 
