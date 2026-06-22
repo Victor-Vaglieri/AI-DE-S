@@ -3,7 +3,7 @@ import threading
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from app.exporters_base import BaseExporter
-from app.models import Base, JobModel, HardwareModel
+from app.models import Base, JobModel
 
 logger = logging.getLogger("AI-DE-S.SQL")
 
@@ -34,14 +34,12 @@ class SqlExporter(BaseExporter):
         with self._lock:
             sessao_atual = self.Sessao()
             try:
-                if mode == "jobs":
-                    dados_vaga = data.model_dump()
-                    dados_vaga['requisitos'] = ", ".join(dados_vaga.get('requisitos', []))
-                    sessao_atual.add(JobModel(**dados_vaga))
-                elif mode == "hardware":
-                    sessao_atual.add(HardwareModel(**data.model_dump()))
+                from sqlalchemy.exc import SQLAlchemyError
+                dados_vaga = data.model_dump()
+                dados_vaga['requisitos'] = ", ".join(dados_vaga.get('requisitos', []))
+                sessao_atual.add(JobModel(**dados_vaga))
                 sessao_atual.commit()
-                logger.debug(f"SQL: Item salvo no banco ({mode})")
+                logger.debug("SQL: Vaga salva no banco")
             except Exception as e:
                 sessao_atual.rollback()
                 logger.error(f"Erro SQL: {e}")
