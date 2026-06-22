@@ -54,7 +54,15 @@ async def test_processor_invalid_json(mock_processor):
 
 @pytest.mark.anyio
 async def test_processor_success(mock_processor):
-    mock_response = JobList(vagas=[{"titulo": "Python Developer", "empresa": "Tech Corp"}])
+    mock_response = JobList(vagas=[{
+        "titulo": "Python Developer",
+        "empresa": "Tech Corp",
+        "localizacao": "Remoto",
+        "origem": "Web",
+        "salario": "Não informado",
+        "requisitos": ["Python"],
+        "link_inscricao": ""
+    }])
     mock_processor.client.chat.completions.create.return_value = mock_response
     
     result = await mock_processor.process("<html>test</html>", JobList)

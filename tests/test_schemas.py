@@ -1,14 +1,20 @@
 from app.schemas.jobs import JobListing, JobList
 
-def test_job_listing_defaults():
-    job = JobListing()
-    assert job.titulo == "Título não encontrado"
-    assert job.empresa == "Empresa não informada"
-    assert job.localizacao == "Remoto/Não informado"
-    assert job.salario == "Não informado"
-    assert job.requisitos == []
+def test_job_listing_creation():
+    job = JobListing(
+        titulo="Engenheiro",
+        empresa="Tech Corp",
+        localizacao="Remoto",
+        origem="Web",
+        salario="10000",
+        requisitos=["Python", "SQL"],
+        link_inscricao="http://vaga.com"
+    )
+    assert job.titulo == "Engenheiro"
+    assert job.empresa == "Tech Corp"
+    assert job.requisitos == ["Python", "SQL"]
 
-def test_job_list_empty():
-    job_list = JobList()
+def test_job_list_creation():
+    job_list = JobList(vagas=[])
     assert job_list.vagas == []
 
