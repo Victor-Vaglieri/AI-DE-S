@@ -42,7 +42,7 @@ jobs:
       - name: Run Scraper Pipeline
         env:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-        run: python -m app.main --mode ${{ vars.TARGET_MODE || 'jobs' }} --urls "config/sites-vagas.txt"
+        run: python -m app.main --urls "config/sites-vagas.txt"
 
       - name: Commit and Push Results
         run: |
