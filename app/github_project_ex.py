@@ -36,7 +36,7 @@ class GitHubProjectExporter(BaseExporter):
             if self.foi_carreg: return
             if not self.token or not self.project_id: return
             
-            consu_graph = """query($id: ID!) { node(id: $id) { ... on ProjectV2 { items(first: 100) { nodes { content { ... on DraftIssue { title } ... on Issue { title } } } } } } }"""
+            consu_graph = """query($id: ID!) { node(id: $id) { ... on ProjectV2 { items(last: 100) { nodes { content { ... on DraftIssue { title } ... on Issue { title } } } } } } }"""
             retor_data = self._execute(consu_graph, {"id": self.project_id})
             if retor_data and "node" in retor_data:
                 self.cache_vistos = {n["content"]["title"] for n in retor_data["node"]["items"]["nodes"] if n.get("content")}
