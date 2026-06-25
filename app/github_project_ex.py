@@ -45,7 +45,7 @@ class GitHubProjectExporter(BaseExporter):
                 query($id: ID!) {{ 
                     node(id: $id) {{ 
                         ... on ProjectV2 {{ 
-                            items(first: 100{cursor_arg}) {{ 
+                            items(last: 200{cursor_arg}) {{ 
                                 pageInfo {{ hasNextPage endCursor }}
                                 nodes {{ 
                                     content {{ ... on DraftIssue {{ title }} ... on Issue {{ title }} }} 
@@ -79,12 +79,10 @@ class GitHubProjectExporter(BaseExporter):
         busca_str = f"{data.titulo} @ {data.empresa}".lower().strip()
         
         with self._trava:
-            # Match flexível para ignorar mudanças de origem (ex: [Web] vs [LinkedIn])
             for cached_title in self.cache_vistos:
                 if busca_str in cached_title:
                     return
             
-            # Se não achou, adiciona ao cache para as próximas validações em memória
             self.cache_vistos.add(titul_vaga.lower().strip())
 
         corpo_vaga = f"Empresa: {data.empresa}\nLocal: {data.localizacao}\nLink: {data.link_inscricao}"
