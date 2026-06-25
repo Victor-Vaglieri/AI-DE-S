@@ -60,8 +60,8 @@ class DataProcessor:
         return texto_limpo[:limit_carac]
 
     @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=2, min=4, max=20),
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=3, min=10, max=60),
         retry=retry_if_exception_type(Exception),
         reraise=True
     )

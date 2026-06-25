@@ -78,31 +78,81 @@ class Pipeline:
                 sopa = BeautifulSoup(texto_bruto, 'lxml')
                 
                 job_links = []
-                for a_tag in sopa.select('a.base-card__full-link, a.job-search-card__link, a[href*="/job/"], a[href*="/vaga/"]'):
-                    href = a_tag.get('href')
-                    if href and href not in job_links and 'http' in href:
+                cards = sopa.select('.job-search-card, .base-search-card, li')
+                
+                if cards:
+                    for card in cards:
+                        a_tag = card.select_one('a.base-card__full-link, a.job-search-card__link, a[href*="/job/"], a[href*="/vaga/"]')
+                        if not a_tag:
+                            continue
+                            
+                        href = a_tag.get('href')
+                        if not href or 'http' not in href or href in job_links:
+                            continue
+                        
+                        # Não gostei disso
+                        time_tag = card.select_one('time')
+                        if time_tag:
+                            valida_idade = True
+                            dt_str = time_tag.get('datetime')
+                            if dt_str:
+                                try:
+                                    from datetime import datetime, timedelta, timezone
+                                    data_vaga = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+                                    data_vaga = data_vaga.replace(tzinfo=None)
+                                    idade = datetime.now() - data_vaga
+                                    
+                                    if idade > timedelta(days=1, hours=12):
+                                        logger.debug(f"[{indice_at}/{total}] Ignorando vaga postada em {dt_str} (idade: {idade}).")
+                                        continue
+                                    valida_idade = False
+                                except Exception:
+                                    pass
+                                    
+                            if valida_idade:
+                                import re
+                                tempo_texto = time_tag.get_text(strip=True).lower()
+                                
+                                if re.search(r'\b(week|month|year|semana|mês|mes|ano)s?\b', tempo_texto):
+                                    logger.debug(f"[{indice_at}/{total}] Ignorando vaga antiga (regex): {tempo_texto}")
+                                    continue
+                                
+                                if re.search(r'\b(?:[2-9]|[1-9]\d+)\s+(day|dia)s?\b', tempo_texto):
+                                    logger.debug(f"[{indice_at}/{total}] Ignorando vaga >24h (regex): {tempo_texto}")
+                                    continue
+                                
                         job_links.append(href)
                 
+                if not job_links:
+                    for a_tag in sopa.select('a.base-card__full-link, a.job-search-card__link, a[href*="/job/"], a[href*="/vaga/"]'):
+                        href = a_tag.get('href')
+                        if href and href not in job_links and 'http' in href:
+                            job_links.append(href)
+                
                 if job_links and len(job_links) > 1:
-                    logger.info(f"[{indice_at}/{total}] Encontrados {len(job_links)} links de vagas. Extraindo detalhes de todas (em lotes de 10) para otimizar tokens...")
-                    batch_size = settings.get("pipeline.job_batch_size", 10)
-                    
-                    for i in range(0, len(job_links), batch_size):
-                        lote_links = job_links[i:i+batch_size]
-                        textos_vagas = []
-                        
-                        logger.info(f"[{indice_at}/{total}] Processando lote {i//batch_size + 1} com {len(lote_links)} vagas...")
-                        for j_url in lote_links:
+                    logger.info(f"[{indice_at}/{total}] Encontrados {len(job_links)} links de vagas. Extraindo detalhes de todas (em lotes).")
+                    batch_size = settings.get("pipeline.job_batch_size", 5)
+                    aba_semaforo = asyncio.Semaphore(5)
+
+                    async def extrair_vaga_seguro(j_url):
+                        async with aba_semaforo:
                             try:
-                                vaga_html = await navegador.fetch_content(j_url)
+                                vaga_html = await navegador.fetch_content(j_url, fast_mode=True)
                                 texto_limpo_vaga = self.processor._clean_html_soup(vaga_html)
-                                textos_vagas.append(f"URL: {j_url}\n{texto_limpo_vaga}")
+                                return f"URL: {j_url}\n{texto_limpo_vaga}"
                             except Exception as e:
                                 logger.error(f"Erro ao extrair link de vaga {j_url}: {e}")
-                                
+                                return None
+
+                    for i in range(0, len(job_links), batch_size):
+                        lote_links = job_links[i:i+batch_size]
+                        logger.info(f"[{indice_at}/{total}] Baixando HTML do lote {i//batch_size + 1} ({len(lote_links)} vagas) concorrentemente...")
+                        
+                        resultados_html = await asyncio.gather(*[extrair_vaga_seguro(u) for u in lote_links])
+                        textos_vagas = [res for res in resultados_html if res]
+                        
                         texto_final = "\n\n=== NOVA VAGA ===\n\n".join(textos_vagas)
                         
-                        # Processa este lote com a IA
                         try:
                             dados_estru = await self.processor.process(texto_final, self.schema)
                             if dados_estru and getattr(dados_estru, 'vagas', []):
@@ -173,7 +223,7 @@ class Pipeline:
                 return
             self.itens_vistos.add(chave_item)
 
-        if "Título não encontrado" in item.titulo or not item.empresa.strip():
+        if not item.titulo or not item.titulo.strip() or not item.empresa or not item.empresa.strip():
             return
         
         if not item.link_inscricao or "http" not in item.link_inscricao:

@@ -45,7 +45,7 @@ class WebScraper:
         retry=retry_if_exception_type(Exception),
         reraise=True
     )
-    async def fetch_content(self, url: str) -> str:
+    async def fetch_content(self, url: str, fast_mode: bool = False) -> str:
         browser = await self.get_browser()
         user_agent = settings.get("scraper.user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         
@@ -71,11 +71,12 @@ class WebScraper:
                 logger.warning(f"Timeout aguardando {target_element} em {url}. Continuando assim mesmo.")
 
             # scroll
-            scroll_depth = settings.get("scraper.scroll_depth", 6)
+            scroll_depth = 1 if fast_mode else settings.get("scraper.scroll_depth", 6)
             for _ in range(scroll_depth):
                 scroll_amount = random.randint(400, 800)
                 await page.evaluate(f"window.scrollBy(0, {scroll_amount});")
-                await asyncio.sleep(random.uniform(0.5, 1.5))
+                if not fast_mode:
+                    await asyncio.sleep(random.uniform(0.5, 1.5))
             
             content = await page.content()
             return content
