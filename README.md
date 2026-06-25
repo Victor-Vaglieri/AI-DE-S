@@ -74,3 +74,18 @@ python -m app.main --mode hardware --urls config/sites-hardware.txt
 *   `config/settings.yaml`: Parâmetros técnicos do sistema (modelos, tempos, limites).
 
 ---
+
+## 5. Motivação e Escolhas Arquiteturais (Trade-offs)
+
+*   **Playwright (Assíncrono) vs Requests/Selenium:** A escolha do **Playwright** foi baseada na sua capacidade de lidar com SPAs (Single Page Applications) e renderização client-side. Bibliotecas puras como `requests` falharam em sites com proteções antibot e conteúdo carregado via JS, enquanto o Selenium consome mais recursos e é mais lento que a arquitetura assíncrona do Playwright.
+*   **BeautifulSoup4 na Pré-limpeza vs LLM Puro:** Para evitar enviar todo o código de uma página ao LLM, o que estourou a janela de contexto e gerou aumento de custos, foi escolhido o **BeautifulSoup4** como camada intermediária ja que ele atua removendo scripts, CSS, e lixo de HTML, entregando apenas o contexto textual melhor para a IA processar.
+*   **Banco de Dados Local (SQLite/SQLAlchemy):** Em vez de exigir a instalação e orquestração de bancos para testes locais, o uso de **SQLite** acoplado ao SQLAlchemy simplifica a carga inicial, rodando de maneira autossuficiente (mesmo em containers via mapeamento de volumes).
+
+## 6. Desafios Enfrentados e Soluções
+
+*   **Bloqueios de Acesso e Proteções (Anti-Bot):**
+    *   *Desafio:* Vários sites recusavam conexões sucessivas ou limitavam o carregamento de dados ao identificar as requisições como atividade não humana.
+    *   *Solução:* Implementação de emulação de comportamento mais "orgânico" no Scraper, aplicando scroll nas páginas para engatilhar carregamentos *lazy-loaded* e gerenciamento de retentativas usando concorrência.
+*   **Consistência Estrutural da Saída do LLM:**
+    *   *Desafio:* Modelos LLM podem perder a formatação desejada no meio da resposta ou omitir chaves na hora de entregar o dado estruturado.
+    *   *Solução:* Utilização do **Instructor** atrelado aos schemas do **Pydantic** obrigando a API da IA a gerar saídas condizentes à estrutura de dados tipada pelo projeto, validando as respostas e garantindo melhor confiabilidade na pipeline.
