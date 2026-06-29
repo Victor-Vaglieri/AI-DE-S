@@ -14,34 +14,41 @@ class GitHubProjectExporter(BaseExporter):
         self.url = "https://api.github.com/graphql"
         self.headers = {"Authorization": f"Bearer {self.token}"}
         
-        self.cache_vistos = set()
-        self.foi_carreg = False
-        self._trava = threading.Lock()
+        self.seen_cache = set()
+        self.is_loaded = False
+        self._lock = threading.Lock()
 
-    def _execute(self, query, vars=None):
+    def _execute(self, query, variables=None):
         try:
-            respo_post = requests.post(self.url, json={'query': query, 'variables': vars}, headers=self.headers, timeout=10)
-            respo_post.raise_for_status()
-            dados_json = respo_post.json()
-            if "errors" in dados_json:
-                logger.error(f"Erro GraphQL: {dados_json['errors'][0]['message']}")
+            response = requests.post(
+                self.url, 
+                json={'query': query, 'variables': variables}, 
+                headers=self.headers, 
+                timeout=10
+            )
+            response.raise_for_status()
+            json_data = response.json()
+            if "errors" in json_data:
+                logger.error(f"Erro GraphQL: {json_data['errors'][0]['message']}")
                 return None
-            return dados_json.get("data")
+            return json_data.get("data")
         except Exception as e:
             logger.error(f"Erro conexão GitHub: {e}")
             return None
 
     def _load_cache(self):
-        with self._trava:
-            if self.foi_carreg: return
-            if not self.token or not self.project_id: return
+        with self._lock:
+            if self.is_loaded: 
+                return
+            if not self.token or not self.project_id: 
+                return
             
-            tem_mais = True
+            has_next = True
             cursor = None
             
-            while tem_mais:
+            while has_next:
                 cursor_arg = f', after: "{cursor}"' if cursor else ""
-                consu_graph = f"""
+                graphql_query = f"""
                 query($id: ID!) {{ 
                     node(id: $id) {{ 
                         ... on ProjectV2 {{ 
@@ -55,43 +62,53 @@ class GitHubProjectExporter(BaseExporter):
                     }} 
                 }}
                 """
-                retor_data = self._execute(consu_graph, {"id": self.project_id})
+                return_data = self._execute(graphql_query, {"id": self.project_id})
                 
-                if retor_data and "node" in retor_data and retor_data["node"].get("items"):
-                    items_data = retor_data["node"]["items"]
-                    for n in items_data["nodes"]:
-                        if n and n.get("content") and n["content"].get("title"):
-                            self.cache_vistos.add(n["content"]["title"].lower().strip())
+                if return_data and "node" in return_data and return_data["node"].get("items"):
+                    items_data = return_data["node"]["items"]
+                    for node in items_data["nodes"]:
+                        if node and node.get("content") and node["content"].get("title"):
+                            self.seen_cache.add(node["content"]["title"].lower().strip())
                     
-                    tem_mais = items_data["pageInfo"]["hasNextPage"]
+                    has_next = items_data["pageInfo"]["hasNextPage"]
                     cursor = items_data["pageInfo"]["endCursor"]
                 else:
-                    tem_mais = False
+                    has_next = False
                     
-            self.foi_carreg = True
-            logger.info(f"Cache GitHub carregado: {len(self.cache_vistos)} itens totais paginados.")
+            self.is_loaded = True
+            logger.info(f"Cache GitHub carregado: {len(self.seen_cache)} itens totais paginados.")
 
     def save(self, data, mode):
-        if mode != "jobs": return
-        if not self.foi_carreg: self._load_cache()
-
-        titul_vaga = f"[{data.origem}] {data.titulo} @ {data.empresa}"
-        busca_str = f"{data.titulo} @ {data.empresa}".lower().strip()
+        if mode != "jobs": 
+            return
         
-        with self._trava:
-            for cached_title in self.cache_vistos:
-                if busca_str in cached_title:
+        if not self.is_loaded: 
+            self._load_cache()
+
+        job_title = f"[{data.origem}] {data.titulo} @ {data.empresa}"
+        search_str = f"{data.titulo} @ {data.empresa}".lower().strip()
+        
+        with self._lock:
+            for cached_title in self.seen_cache:
+                if search_str in cached_title:
                     return
             
-            self.cache_vistos.add(titul_vaga.lower().strip())
+            self.seen_cache.add(job_title.lower().strip())
 
-        corpo_vaga = f"Empresa: {data.empresa}\nLocal: {data.localizacao}\nLink: {data.link_inscricao}"
+        job_body = f"Empresa: {data.empresa}\nLocal: {data.localizacao}\nLink: {data.link_inscricao}"
         
         if not self.repository_id:
-            mutac_graph = """mutation($p: ID!, $t: String!, $b: String!) { addProjectV2DraftIssue(input: {projectId: $p, title: $t, body: $b}) { projectItem { id } } }"""
-            respo_ia = self._execute(mutac_graph, {"p": self.project_id, "t": titul_vaga, "b": corpo_vaga})
+            graphql_mutation = """
+            mutation($p: ID!, $t: String!, $b: String!) { 
+                addProjectV2DraftIssue(input: {projectId: $p, title: $t, body: $b}) { 
+                    projectItem { id } 
+                } 
+            }
+            """
+            mutation_response = self._execute(graphql_mutation, {"p": self.project_id, "t": job_title, "b": job_body})
         else:
-            respo_ia = True 
+            # Placeholder for future repository issue creation
+            mutation_response = True 
 
-        if respo_ia:
-            logger.info(f"Enviado ao GitHub Project: {titul_vaga}")
+        if mutation_response:
+            logger.info(f"Enviado ao GitHub Project: {job_title}")
