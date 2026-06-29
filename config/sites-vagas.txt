@@ -1,3 +1,3 @@
-https://www.linkedin.com/jobs/search/?currentJobId=4420432608&distance=25&f_E=2%2C3&f_TPR=r86400&geoId=105871508&keywords=Desenvolvedor%20junior%20-PL%20-senior&origin=JOB_SEARCH_PAGE_JOB_FILTER&refresh=true
-https://www.linkedin.com/jobs/search/?currentJobId=4370513720&f_E=2%2C3&f_TPR=r86400&geoId=105871508&keywords=IA%20junior%20-senior%20-pleno&origin=JOB_SEARCH_PAGE_JOB_FILTER&refresh=true&spellCorrectionEnabled=true
+https://www.linkedin.com/jobs/search/?currentJobId=4370513720&f_E=2%2C3&f_TPR=r86400&geoId=105871508&keywords=IA%20junior&origin=JOB_SEARCH_PAGE_JOB_FILTER&refresh=true&spellCorrectionEnabled=true
+https://www.linkedin.com/jobs/search/?currentJobId=4420432608&distance=25&f_E=2%2C3&f_TPR=r86400&geoId=105871508&keywords=Desenvolvedor%20junior%20-PL&origin=JOB_SEARCH_PAGE_JOB_FILTER&refresh=true
 https://www.linkedin.com/jobs/search/?currentJobId=4420432608&f_E=2%2C3&f_TPR=r86400&geoId=105871508&keywords=Desenvolvedor%20full%20stack&origin=JOB_SEARCH_PAGE_LOCATION_AUTOCOMPLETE&refresh=true&spellCorrectionEnabled=true
